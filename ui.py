@@ -1,7 +1,8 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel,
-    QPushButton, QLineEdit, QFrame
+    QPushButton, QLineEdit, QFrame, QFileDialog
 )
+from storage import save_deck
 from PySide6.QtCore import Qt
 from helpers import start_card, check_answer
 
@@ -21,6 +22,7 @@ class FlashcardApp(QWidget):
 
         self.setup_ui()
         self.update_ui_for_no_deck()
+        self.deck_path = None  # Pas gevuld na opslaan
 
     def setup_ui(self):
         self.setWindowTitle("Flashcard App")
@@ -98,6 +100,14 @@ class FlashcardApp(QWidget):
         root.addWidget(self.feedback_label)
 
         # Buttons
+        self.new_deck_button = QPushButton("Nieuw deck")
+        self.new_deck_button.clicked.connect(self.create_new_deck)
+        root.addWidget(self.new_deck_button)
+
+        self.save_button = QPushButton("Opslaan")
+        self.save_button.clicked.connect(self.save_current_deck)
+        root.addWidget(self.save_button)
+
         self.check_button = QPushButton("Controleer")
         self.check_button.clicked.connect(self.on_check_clicked)
         root.addWidget(self.check_button)
@@ -178,19 +188,65 @@ class FlashcardApp(QWidget):
         self.answer_input.setDisabled(True)
         self.check_button.setDisabled(True)
         self.next_button.setDisabled(True)
-
-    def update_ui_for_active_deck(self):
-        self.answer_input.setDisabled(False)
-        self.check_button.setDisabled(False)
-        self.next_button.setDisabled(False)
+        self.save_button.setDisabled(True)
 
     def set_active_deck(self, deck: dict):
         self.current_deck = deck
         self.cards = deck["cards"]
         self.current_index = 0
+        self.deck_path = None  # nieuw deck is nog niet opgeslagen
 
         if self.cards:
-            self.update_ui_for_active_deck()
             self.load_card(self.cards[self.current_index])
         else:
             self.front_label.setText("Deck is leeg.")
+
+        # Study pas na opslaan:
+        self.update_ui_for_unsaved_deck()
+
+
+    def update_ui_for_unsaved_deck(self):
+        self.answer_input.setDisabled(True)
+        self.check_button.setDisabled(True)
+        self.next_button.setDisabled(True)
+        self.save_button.setDisabled(False)
+
+    def update_ui_for_saved_deck(self):
+        self.answer_input.setDisabled(False)
+        self.check_button.setDisabled(False)
+        self.next_button.setDisabled(False)
+        self.save_button.setDisabled(False)
+
+    def create_new_deck(self):
+        deck = {"name": "Nieuw deck", "cards": []}
+        self.set_active_deck(deck)
+
+    def save_current_deck(self):
+        if not self.current_deck:
+            return
+
+        # Als we nog geen pad hebben: Save As
+        if not self.deck_path:
+            filepath, _ = QFileDialog.getSaveFileName(
+                self,
+                "Deck opslaan",
+                "",
+                "Deck files (*.json)"
+            )
+            if not filepath:
+                return  # gebruiker annuleert
+
+            # zorg dat het .json is
+            if not filepath.lower().endswith(".json"):
+                filepath += ".json"
+
+            self.deck_path = filepath
+
+        # Schrijf naar schijf
+        save_deck(self.current_deck, self.deck_path)
+
+        # Nu mag je studeren
+        self.update_ui_for_saved_deck()
+        self.front_label.setText(f"Deck opgeslagen: {self.current_deck.get('name','')}")
+
+

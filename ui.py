@@ -11,10 +11,8 @@ class FlashcardApp(QWidget):
         super().__init__()
 
         # Tijdelijke demo-kaarten (in memory)
-        self.cards = [
-            {"front": "lopen", "back": ["walk", "go", "run"]},
-            {"front": "eten", "back": ["eat", "consume"]},
-        ]
+        self.current_deck = None
+        self.cards = []
 
         self.current_index = 0
         self.current_card = None
@@ -22,7 +20,7 @@ class FlashcardApp(QWidget):
         self.slot_labels = []
 
         self.setup_ui()
-        self.load_card(self.cards[self.current_index])
+        self.update_ui_for_no_deck()
 
     def setup_ui(self):
         self.setWindowTitle("Flashcard App")
@@ -173,3 +171,26 @@ class FlashcardApp(QWidget):
             self.current_index = 0
 
         self.load_card(self.cards[self.current_index])
+
+    def update_ui_for_no_deck(self):
+        self.front_label.setText("Geen deck geladen.")
+        self.clear_slots()
+        self.answer_input.setDisabled(True)
+        self.check_button.setDisabled(True)
+        self.next_button.setDisabled(True)
+
+    def update_ui_for_active_deck(self):
+        self.answer_input.setDisabled(False)
+        self.check_button.setDisabled(False)
+        self.next_button.setDisabled(False)
+
+    def set_active_deck(self, deck: dict):
+        self.current_deck = deck
+        self.cards = deck["cards"]
+        self.current_index = 0
+
+        if self.cards:
+            self.update_ui_for_active_deck()
+            self.load_card(self.cards[self.current_index])
+        else:
+            self.front_label.setText("Deck is leeg.")

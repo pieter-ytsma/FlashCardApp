@@ -71,6 +71,10 @@ class FlashcardApp(QWidget):
         root = QVBoxLayout()
         root.setSpacing(16)
 
+        self.status_label = QLabel("")
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self.status_label)
+
         # Card frame
         self.card_frame = QFrame()
         card_layout = QVBoxLayout()
@@ -103,6 +107,10 @@ class FlashcardApp(QWidget):
         self.new_deck_button = QPushButton("Nieuw deck")
         self.new_deck_button.clicked.connect(self.create_new_deck)
         root.addWidget(self.new_deck_button)
+
+        self.add_card_button = QPushButton("Kaart toevoegen")
+        self.add_card_button.clicked.connect(self.add_card)
+        root.addWidget(self.add_card_button)
 
         self.save_button = QPushButton("Opslaan")
         self.save_button.clicked.connect(self.save_current_deck)
@@ -189,12 +197,14 @@ class FlashcardApp(QWidget):
         self.check_button.setDisabled(True)
         self.next_button.setDisabled(True)
         self.save_button.setDisabled(True)
+        self.status_label.setText("Geen deck geladen.")
 
     def set_active_deck(self, deck: dict):
         self.current_deck = deck
         self.cards = deck["cards"]
         self.current_index = 0
         self.deck_path = None  # nieuw deck is nog niet opgeslagen
+        self.status_label.setText("Nieuw deck aangemaakt. Eerst opslaan.")
 
         if self.cards:
             self.load_card(self.cards[self.current_index])
@@ -225,7 +235,6 @@ class FlashcardApp(QWidget):
         if not self.current_deck:
             return
 
-        # Als we nog geen pad hebben: Save As
         if not self.deck_path:
             filepath, _ = QFileDialog.getSaveFileName(
                 self,
@@ -234,19 +243,36 @@ class FlashcardApp(QWidget):
                 "Deck files (*.json)"
             )
             if not filepath:
-                return  # gebruiker annuleert
+                return
 
-            # zorg dat het .json is
             if not filepath.lower().endswith(".json"):
                 filepath += ".json"
 
             self.deck_path = filepath
 
-        # Schrijf naar schijf
         save_deck(self.current_deck, self.deck_path)
 
-        # Nu mag je studeren
         self.update_ui_for_saved_deck()
-        self.front_label.setText(f"Deck opgeslagen: {self.current_deck.get('name','')}")
 
+        if self.cards:
+            self.current_index = 0
+            self.load_card(self.cards[self.current_index])
+        else:
+            self.front_label.setText("Deck is leeg.")
 
+    def add_card(self):
+        if not self.current_deck:
+            return
+
+        front = "test"
+        back = ["antwoord"]
+
+        card = {
+            "front": front,
+            "back": back
+        }
+
+        self.current_deck["cards"].append(card)
+        self.cards = self.current_deck["cards"]
+
+        self.status_label.setText("Kaart toegevoegd.")

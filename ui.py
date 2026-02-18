@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel,
+    QMainWindow, QWidget, QVBoxLayout, QLabel,
     QPushButton, QLineEdit, QFrame, QFileDialog
 )
 from storage import save_deck
@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt
 from helpers import start_card, check_answer
 
 
-class FlashcardApp(QWidget):
+class FlashcardApp(QMainWindow):
     def __init__(self):
         super().__init__()
 
@@ -27,6 +27,18 @@ class FlashcardApp(QWidget):
     def setup_ui(self):
         self.setWindowTitle("Flashcard App")
         self.resize(650, 520)
+
+        self.menu = self.menuBar()
+        self.deck_menu = self.menu.addMenu("Deck")
+
+        self.new_action = self.deck_menu.addAction("Nieuw deck")
+        self.new_action.triggered.connect(self.create_new_deck)
+
+        self.open_action = self.deck_menu.addAction("Deck laden")
+        self.open_action.triggered.connect(self.load_deck_dialog)
+
+        self.save_action = self.deck_menu.addAction("Deck opslaan")
+        self.save_action.triggered.connect(self.save_current_deck)
 
         self.setStyleSheet("""
             QWidget {
@@ -103,18 +115,10 @@ class FlashcardApp(QWidget):
         self.feedback_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         root.addWidget(self.feedback_label)
 
-        # Buttons
-        self.new_deck_button = QPushButton("Nieuw deck")
-        self.new_deck_button.clicked.connect(self.create_new_deck)
-        root.addWidget(self.new_deck_button)
-
+        # Button
         self.add_card_button = QPushButton("Kaart toevoegen")
         self.add_card_button.clicked.connect(self.add_card)
         root.addWidget(self.add_card_button)
-
-        self.save_button = QPushButton("Opslaan")
-        self.save_button.clicked.connect(self.save_current_deck)
-        root.addWidget(self.save_button)
 
         self.check_button = QPushButton("Controleer")
         self.check_button.clicked.connect(self.on_check_clicked)
@@ -124,7 +128,9 @@ class FlashcardApp(QWidget):
         self.next_button.clicked.connect(self.next_card)
         root.addWidget(self.next_button)
 
-        self.setLayout(root)
+        central = QWidget()
+        central.setLayout(root)
+        self.setCentralWidget(central)
 
     def clear_slots(self):
         while self.slots_layout.count():
@@ -196,7 +202,7 @@ class FlashcardApp(QWidget):
         self.answer_input.setDisabled(True)
         self.check_button.setDisabled(True)
         self.next_button.setDisabled(True)
-        self.save_button.setDisabled(True)
+        self.save_action.setEnabled(False)
         self.status_label.setText("Geen deck geladen.")
 
     def set_active_deck(self, deck: dict):
@@ -219,13 +225,13 @@ class FlashcardApp(QWidget):
         self.answer_input.setDisabled(True)
         self.check_button.setDisabled(True)
         self.next_button.setDisabled(True)
-        self.save_button.setDisabled(False)
+        self.save_action.setEnabled(True)
 
     def update_ui_for_saved_deck(self):
         self.answer_input.setDisabled(False)
         self.check_button.setDisabled(False)
         self.next_button.setDisabled(False)
-        self.save_button.setDisabled(False)
+        self.save_action.setEnabled(True)
 
     def create_new_deck(self):
         deck = {"name": "Nieuw deck", "cards": []}
@@ -276,3 +282,6 @@ class FlashcardApp(QWidget):
         self.cards = self.current_deck["cards"]
 
         self.status_label.setText("Kaart toegevoegd.")
+
+    def load_deck_dialog(self):
+        self.status_label.setText("Deck laden nog niet geïmplementeerd.")

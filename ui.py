@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QFrame, QFileDialog,
     QDialog, QDialogButtonBox
 )
-from storage import save_deck
+from storage import save_deck, load_deck
 from PySide6.QtCore import Qt
 from helpers import start_card, check_answer
 
@@ -291,7 +291,34 @@ class FlashcardApp(QMainWindow):
             self.status_label.setText("Kaart toegevoegd.")
 
     def load_deck_dialog(self):
-        self.status_label.setText("Deck laden nog niet geïmplementeerd.")
+        filepath, _ = QFileDialog.getOpenFileName(
+            self,
+            "Deck laden",
+            "",
+            "Deck files (*.json)"
+        )
+
+        if not filepath:
+            return  # gebruiker annuleert
+
+        try:
+            deck = load_deck(filepath)
+        except Exception as e:
+            self.status_label.setText(f"Fout bij laden: {e}")
+            return
+
+        self.deck_path = filepath
+        self.set_active_deck(deck)
+        self.update_ui_for_saved_deck()
+
+        if self.cards:
+            self.current_index = 0
+            self.load_card(self.cards[self.current_index])
+        else:
+            self.front_label.setText("Deck is leeg.")
+
+        self.status_label.setText("Deck geladen.")
+
 
 
 

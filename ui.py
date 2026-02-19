@@ -161,6 +161,7 @@ class FlashcardApp(QMainWindow):
         left_layout.addWidget(self.add_card_button)
 
         self.edit_cards_button = QPushButton("Kaarten bewerken")
+        self.edit_cards_button.clicked.connect(self.edit_cards)
         left_layout.addWidget(self.edit_cards_button)
 
         left_layout.addStretch()
@@ -447,6 +448,91 @@ class FlashcardApp(QMainWindow):
         self.load_card(card)
 
 
+
+
+    def edit_cards(self):
+        if not self.current_deck:
+            return
+
+        dialog = EditCardsDialog(self.current_deck["cards"], self)
+        dialog.exec()
+        self.cards = self.current_deck["cards"]
+
+
+class EditCardsDialog(QDialog):
+    def __init__(self, cards: list, parent=None):
+        super().__init__(parent)
+        self.cards = cards
+        self.setWindowTitle("Kaarten bewerken")
+        self.resize(600, 500)
+
+        self.main_layout = QVBoxLayout()
+        self.setLayout(self.main_layout)
+
+        self.scroll_area = QWidget()
+        self.cards_layout = QVBoxLayout()
+        self.cards_layout.setSpacing(10)
+        self.scroll_area.setLayout(self.cards_layout)
+
+        from PySide6.QtWidgets import QScrollArea
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(self.scroll_area)
+        self.main_layout.addWidget(scroll)
+
+        close_btn = QPushButton("Sluiten")
+        close_btn.clicked.connect(self.accept)
+        self.main_layout.addWidget(close_btn)
+
+        self.build_card_list()
+
+    def build_card_list(self):
+        while self.cards_layout.count():
+            item = self.cards_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        for i, card in enumerate(self.cards):
+            frame = QFrame()
+            frame.setObjectName("CardEditFrame")
+            layout = QVBoxLayout()
+            layout.setSpacing(6)
+
+            number_label = QLabel(f"Kaart {i + 1}")
+            number_label.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
+            layout.addWidget(number_label)
+
+            front_label = QLabel("Voorkant")
+            front_label.setStyleSheet("color: #888; font-size: 12px;")
+            layout.addWidget(front_label)
+
+            front_input = QLineEdit(card["front"])
+            front_input.setPlaceholderText("Voorkant")
+            front_input.textChanged.connect(lambda text, c=card: c.update({"front": text}))
+            layout.addWidget(front_input)
+
+            back_label = QLabel("Antwoorden")
+            back_label.setStyleSheet("color: #888; font-size: 12px; margin-top: 6px;")
+            layout.addWidget(back_label)
+
+            for j, ans in enumerate(card["back"]):
+                ans_input = QLineEdit(ans)
+                ans_input.setPlaceholderText(f"Antwoord {j+1}")
+                ans_input.textChanged.connect(lambda text, c=card, idx=j: c["back"].__setitem__(idx, text))
+                layout.addWidget(ans_input)
+
+            delete_btn = QPushButton("Verwijderen")
+            delete_btn.clicked.connect(lambda _, c=card: self.delete_card(c))
+            layout.addWidget(delete_btn)
+
+            frame.setLayout(layout)
+            self.cards_layout.addWidget(frame)
+
+        self.cards_layout.addStretch()
+
+    def delete_card(self, card):
+        self.cards.remove(card)
+        self.build_card_list()
 
 
 class AddCardDialog(QDialog):

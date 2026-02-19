@@ -75,6 +75,12 @@ class FlashcardApp(QMainWindow):
                 background-color: #14532d;
                 border-radius: 10px;
             }
+            QLabel#SlotLabelShown {
+                font-size: 18px;
+                padding: 10px;
+                background-color: #2a2a2a;
+                border-radius: 10px;
+            }
             QLabel#SlotLabelWrong {
                 font-size: 18px;
                 padding: 10px;
@@ -414,8 +420,20 @@ class FlashcardApp(QMainWindow):
         if not self.current_card:
             return
 
-        answers = ", ".join(self.current_card["back"])
-        self.feedback_label.setText(f"Antwoorden: {answers}")
+        remaining = list(self.state["remaining_answers"])
+        for label in self.slot_labels:
+            if label.text() == "_____" and remaining:
+                label.setText(remaining.pop(0))
+                label.setObjectName("SlotLabelShown")
+                label.style().unpolish(label)
+                label.style().polish(label)
+
+        self.state["remaining_answers"].clear()
+        self.card_complete = True
+        self.answer_input.clearFocus()
+        self.next_button.setObjectName("ReadyButton")
+        self.next_button.style().unpolish(self.next_button)
+        self.next_button.style().polish(self.next_button)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Space:

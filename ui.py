@@ -541,12 +541,29 @@ class EditCardsDialog(QDialog):
             layout.addWidget(back_label)
 
             for j, ans in enumerate(card["back"]):
+                row = QWidget()
+                row_layout = QHBoxLayout()
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                row_layout.setSpacing(6)
+
                 ans_input = QLineEdit(ans)
                 ans_input.setPlaceholderText(f"Antwoord {j+1}")
                 ans_input.textChanged.connect(lambda text, c=card, idx=j: c["back"].__setitem__(idx, text))
-                layout.addWidget(ans_input)
+                row_layout.addWidget(ans_input)
 
-            delete_btn = QPushButton("Verwijderen")
+                del_btn = QPushButton("×")
+                del_btn.setFixedWidth(36)
+                del_btn.clicked.connect(lambda _, c=card, idx=j: self.delete_answer(c, idx))
+                row_layout.addWidget(del_btn)
+
+                row.setLayout(row_layout)
+                layout.addWidget(row)
+
+            add_ans_btn = QPushButton("+ Antwoord toevoegen")
+            add_ans_btn.clicked.connect(lambda _, c=card: self.add_answer(c))
+            layout.addWidget(add_ans_btn)
+
+            delete_btn = QPushButton("Kaart verwijderen")
             delete_btn.clicked.connect(lambda _, c=card: self.delete_card(c))
             layout.addWidget(delete_btn)
 
@@ -558,6 +575,15 @@ class EditCardsDialog(QDialog):
     def delete_card(self, card):
         self.cards.remove(card)
         self.build_card_list()
+
+    def add_answer(self, card):
+        card["back"].append("")
+        self.build_card_list()
+
+    def delete_answer(self, card, idx):
+        if len(card["back"]) > 1:
+            card["back"].pop(idx)
+            self.build_card_list()
 
 
 # ===== ADD CARD DIALOG =====

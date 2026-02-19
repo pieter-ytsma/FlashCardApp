@@ -1,8 +1,10 @@
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QLabel,
-    QPushButton, QLineEdit, QFrame, QFileDialog,
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QPushButton, QLineEdit, QFrame, QFileDialog,
     QDialog, QDialogButtonBox
 )
+
+
 from storage import save_deck, load_deck
 from PySide6.QtCore import Qt
 from helpers import start_card, check_answer
@@ -27,8 +29,9 @@ class FlashcardApp(QMainWindow):
 
     def setup_ui(self):
         self.setWindowTitle("Flashcard App")
-        self.resize(650, 520)
+        self.resize(900, 600)
 
+        # ===== MENU =====
         self.menu = self.menuBar()
         self.deck_menu = self.menu.addMenu("Deck")
 
@@ -41,6 +44,7 @@ class FlashcardApp(QMainWindow):
         self.save_action = self.deck_menu.addAction("Deck opslaan")
         self.save_action.triggered.connect(self.save_current_deck)
 
+        # ===== STYLE =====
         self.setStyleSheet("""
             QWidget {
                 background-color: #121212;
@@ -53,7 +57,7 @@ class FlashcardApp(QMainWindow):
                 padding: 24px;
             }
             QLabel#FrontLabel {
-                font-size: 34px;
+                font-size: 32px;
                 padding: 8px;
             }
             QLabel#SlotLabel {
@@ -81,14 +85,11 @@ class FlashcardApp(QMainWindow):
             }
         """)
 
-        root = QVBoxLayout()
-        root.setSpacing(16)
+        # ===== HOOFDLAYOUT (VERTICAAL) =====
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(20)
 
-        self.status_label = QLabel("")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        root.addWidget(self.status_label)
-
-        # Card frame
+        # ===== KAART (FULL WIDTH) =====
         self.card_frame = QFrame()
         card_layout = QVBoxLayout()
         card_layout.setSpacing(14)
@@ -99,39 +100,62 @@ class FlashcardApp(QMainWindow):
         card_layout.addWidget(self.front_label)
 
         self.slots_layout = QVBoxLayout()
-        self.slots_layout.setSpacing(10)
         card_layout.addLayout(self.slots_layout)
 
         self.card_frame.setLayout(card_layout)
-        root.addWidget(self.card_frame)
+        main_layout.addWidget(self.card_frame)
 
-        # Input
+        # ===== INPUT (FULL WIDTH) =====
         self.answer_input = QLineEdit()
         self.answer_input.setPlaceholderText("Typ een antwoord en druk Enter…")
         self.answer_input.returnPressed.connect(self.on_check_clicked)
-        root.addWidget(self.answer_input)
+        main_layout.addWidget(self.answer_input)
 
-        # Feedback
         self.feedback_label = QLabel("")
         self.feedback_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        root.addWidget(self.feedback_label)
+        main_layout.addWidget(self.feedback_label)
 
-        # Button
-        self.add_card_button = QPushButton("Kaart toevoegen")
+        # ===== ONDERSTE GEDEELTE 50/50 =====
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setSpacing(20)
+
+        left_layout = QVBoxLayout()
+        right_layout = QVBoxLayout()
+
+        # ---- LINKS: BEWERKEN ----
+        self.status_label = QLabel("")
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.add_card_button = QPushButton("Nieuwe kaart")
         self.add_card_button.clicked.connect(self.add_card)
-        root.addWidget(self.add_card_button)
+        left_layout.addWidget(self.add_card_button)
 
-        self.check_button = QPushButton("Controleer")
-        self.check_button.clicked.connect(self.on_check_clicked)
-        root.addWidget(self.check_button)
+        self.edit_cards_button = QPushButton("Kaarten bewerken")
+        left_layout.addWidget(self.edit_cards_button)
+
+        left_layout.addStretch()
+
+        # ---- RECHTS: STUDY ACTIES ----
+        self.show_answers_button = QPushButton("Toon antwoorden")
+        self.show_answers_button.clicked.connect(self.show_answers)
+        right_layout.addWidget(self.show_answers_button)
 
         self.next_button = QPushButton("Volgende kaart")
         self.next_button.clicked.connect(self.next_card)
-        root.addWidget(self.next_button)
+        right_layout.addWidget(self.next_button)
+
+        right_layout.addStretch()
+
+        bottom_layout.addLayout(left_layout, 1)
+        bottom_layout.addLayout(right_layout, 1)
+
+        main_layout.addLayout(bottom_layout)
 
         central = QWidget()
-        central.setLayout(root)
+        central.setLayout(main_layout)
         self.setCentralWidget(central)
+
+
 
     def clear_slots(self):
         while self.slots_layout.count():
@@ -201,7 +225,6 @@ class FlashcardApp(QMainWindow):
         self.front_label.setText("Geen deck geladen.")
         self.clear_slots()
         self.answer_input.setDisabled(True)
-        self.check_button.setDisabled(True)
         self.next_button.setDisabled(True)
         self.save_action.setEnabled(False)
         self.status_label.setText("Geen deck geladen.")
@@ -224,13 +247,11 @@ class FlashcardApp(QMainWindow):
 
     def update_ui_for_unsaved_deck(self):
         self.answer_input.setDisabled(True)
-        self.check_button.setDisabled(True)
         self.next_button.setDisabled(True)
         self.save_action.setEnabled(True)
 
     def update_ui_for_saved_deck(self):
         self.answer_input.setDisabled(False)
-        self.check_button.setDisabled(False)
         self.next_button.setDisabled(False)
         self.save_action.setEnabled(True)
 
@@ -318,6 +339,14 @@ class FlashcardApp(QMainWindow):
             self.front_label.setText("Deck is leeg.")
 
         self.status_label.setText("Deck geladen.")
+    
+    def show_answers(self):
+        if not self.current_card:
+            return
+
+        answers = ", ".join(self.current_card["back"])
+        self.feedback_label.setText(f"Antwoorden: {answers}")
+
 
 
 

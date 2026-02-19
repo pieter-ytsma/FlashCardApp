@@ -144,9 +144,6 @@ class FlashcardApp(QMainWindow):
         self.answer_input.returnPressed.connect(self.on_check_clicked)
         main_layout.addWidget(self.answer_input)
 
-        self.feedback_label = QLabel("")
-        self.feedback_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(self.feedback_label)
 
         # ===== ONDERSTE GEDEELTE 50/50 =====
         bottom_layout = QHBoxLayout()
@@ -219,7 +216,6 @@ class FlashcardApp(QMainWindow):
         self.front_label.setText(card["front"])
         self.build_slots(len(self.state["all_answers"]))
 
-        self.feedback_label.setText("")
         self.answer_input.clear()
         self.answer_input.setFocus()
 
@@ -250,19 +246,16 @@ class FlashcardApp(QMainWindow):
         self.answer_input.setFocus()
 
         if status == "empty":
-            self.feedback_label.setText("Typ iets.")
+            pass
         elif success:
             self.fill_next_slot(normalized)
-            self.feedback_label.setText("Correct ✓")
 
             if not self.state["remaining_answers"]:
-                self.feedback_label.setText("Alles gevonden ✓")
                 self.next_button.setObjectName("ReadyButton")
                 self.next_button.style().unpolish(self.next_button)
                 self.next_button.style().polish(self.next_button)
 
         else:
-            self.feedback_label.setText("Fout ✗")
             self.show_wrong_answers()
 
     def show_wrong_answers(self):
@@ -297,7 +290,6 @@ class FlashcardApp(QMainWindow):
         self.state = None
         self.clear_slots()
         self.front_label.setText("Deck doorgewerkt")
-        self.feedback_label.setText("")
         self.answer_input.clear()
         self.answer_input.setDisabled(True)
         self.next_button.setDisabled(True)
@@ -320,7 +312,6 @@ class FlashcardApp(QMainWindow):
 
         self.clear_slots()
         self.front_label.setText(f"Deck: {deck['name']}")
-        self.feedback_label.setText("")
         self.answer_input.clear()
 
         # Study pas na opslaan:

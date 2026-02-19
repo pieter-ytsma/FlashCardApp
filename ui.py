@@ -339,7 +339,7 @@ class PracticeDialog(QDialog):
     def build_slots(self, count):
         self.clear_slots()
         for i in range(MAX_SLOTS):
-            label = QLabel("_____")
+            label = QLabel("")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             if i < count:
                 label.setObjectName("SlotLabel")
@@ -369,7 +369,7 @@ class PracticeDialog(QDialog):
 
     def fill_next_slot(self, text):
         for label in self.slot_labels:
-            if label.text() == "_____":
+            if label.objectName() == "SlotLabel":
                 label.setText(text)
                 label.setObjectName("SlotLabelCorrect")
                 label.style().unpolish(label)
@@ -408,7 +408,7 @@ class PracticeDialog(QDialog):
     def show_wrong_answers(self):
         remaining = list(self.state["remaining_answers"])
         for label in self.slot_labels:
-            if label.text() == "_____" and remaining:
+            if label.objectName() == "SlotLabel" and remaining:
                 label.setText(remaining.pop(0))
                 label.setObjectName("SlotLabelWrong")
                 label.style().unpolish(label)
@@ -425,7 +425,7 @@ class PracticeDialog(QDialog):
             return
         remaining = list(self.state["remaining_answers"])
         for label in self.slot_labels:
-            if label.text() == "_____" and remaining:
+            if label.objectName() == "SlotLabel" and remaining:
                 label.setText(remaining.pop(0))
                 label.setObjectName("SlotLabelShown")
                 label.style().unpolish(label)

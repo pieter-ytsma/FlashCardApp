@@ -1,9 +1,8 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QLineEdit, QFrame, QFileDialog,
-    QDialog, QDialogButtonBox
+    QDialog, QDialogButtonBox, QScrollArea
 )
-
 
 import random
 from pathlib import Path
@@ -12,27 +11,104 @@ from PySide6.QtCore import Qt
 from helpers import start_card, check_answer
 
 
+STYLESHEET = """
+    QWidget {
+        background-color: #121212;
+        color: white;
+        font-family: Segoe UI;
+    }
+    QFrame {
+        background-color: #1e1e1e;
+        border-radius: 16px;
+        padding: 24px;
+    }
+    QLabel#FrontLabel {
+        font-size: 32px;
+        padding: 8px;
+    }
+    QLabel#SlotLabelEmpty {
+        font-size: 18px;
+        padding: 10px;
+        background-color: #1a1a1a;
+        border-radius: 10px;
+    }
+    QLabel#SlotLabel {
+        font-size: 18px;
+        padding: 10px;
+        background-color: #2a2a2a;
+        border-radius: 10px;
+    }
+    QLabel#SlotLabelCorrect {
+        font-size: 18px;
+        padding: 10px;
+        background-color: #14532d;
+        border-radius: 10px;
+    }
+    QLabel#SlotLabelShown {
+        font-size: 18px;
+        padding: 10px;
+        background-color: #2a2a2a;
+        border-radius: 10px;
+    }
+    QLabel#SlotLabelWrong {
+        font-size: 18px;
+        padding: 10px;
+        background-color: #7f1d1d;
+        border-radius: 10px;
+    }
+    QLineEdit {
+        padding: 12px;
+        border-radius: 10px;
+        background-color: #2d2d2d;
+        border: none;
+        font-size: 16px;
+    }
+    QPushButton {
+        background-color: #2d2d2d;
+        border: none;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 15px;
+    }
+    QPushButton:hover {
+        background-color: #3a3a3a;
+    }
+    QPushButton:disabled {
+        background-color: #1a1a1a;
+        color: #444;
+    }
+    QPushButton#PrimaryButton {
+        background-color: #2563eb;
+    }
+    QPushButton#PrimaryButton:hover {
+        background-color: #1d4ed8;
+    }
+    QPushButton#ReadyButton {
+        background-color: #16a34a;
+    }
+    QPushButton#ReadyButton:hover {
+        background-color: #15803d;
+    }
+"""
+
+MAX_SLOTS = 6
+
+
 class FlashcardApp(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        # Tijdelijke demo-kaarten (in memory)
         self.current_deck = None
         self.cards = []
-
-        self.current_index = 0
-        self.current_card = None
-        self.state = None
-        self.slot_labels = []
-        self.queue = []  # willekeurige wachtrij tijdens oefensessie
+        self.deck_path = None
 
         self.setup_ui()
         self.update_ui_for_no_deck()
-        self.deck_path = None  # Pas gevuld na opslaan
 
     def setup_ui(self):
         self.setWindowTitle("Flashcard App")
-        self.resize(900, 600)
+        self.resize(600, 300)
+        self.setStyleSheet(STYLESHEET)
 
         # ===== MENU =====
         self.menu = self.menuBar()
@@ -47,89 +123,163 @@ class FlashcardApp(QMainWindow):
         self.save_action = self.deck_menu.addAction("Deck opslaan")
         self.save_action.triggered.connect(self.save_current_deck)
 
-        # ===== STYLE =====
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #121212;
-                color: white;
-                font-family: Segoe UI;
-            }
-            QFrame {
-                background-color: #1e1e1e;
-                border-radius: 16px;
-                padding: 24px;
-            }
-            QLabel#FrontLabel {
-                font-size: 32px;
-                padding: 8px;
-            }
-            QLabel#SlotLabelEmpty {
-                font-size: 18px;
-                padding: 10px;
-                background-color: #1a1a1a;
-                border-radius: 10px;
-            }
-            QLabel#SlotLabel {
-                font-size: 18px;
-                padding: 10px;
-                background-color: #2a2a2a;
-                border-radius: 10px;
-            }
-            QLabel#SlotLabelCorrect {
-                font-size: 18px;
-                padding: 10px;
-                background-color: #14532d;
-                border-radius: 10px;
-            }
-            QLabel#SlotLabelShown {
-                font-size: 18px;
-                padding: 10px;
-                background-color: #2a2a2a;
-                border-radius: 10px;
-            }
-            QLabel#SlotLabelWrong {
-                font-size: 18px;
-                padding: 10px;
-                background-color: #7f1d1d;
-                border-radius: 10px;
-            }
-            QLineEdit {
-                padding: 12px;
-                border-radius: 10px;
-                background-color: #2d2d2d;
-                border: none;
-                font-size: 16px;
-            }
-            QPushButton {
-                background-color: #2d2d2d;
-                border: none;
-                padding: 12px;
-                border-radius: 10px;
-                font-size: 15px;
-            }
-            QPushButton:disabled {
-                background-color: #1a1a1a;
-                color: #444;
-            }
-            QPushButton#PrimaryButton {
-                background-color: #2563eb;
-            }
-            QPushButton#PrimaryButton:hover {
-                background-color: #1d4ed8;
-            }
-            QPushButton#ReadyButton {
-                background-color: #16a34a;
-            }
-            QPushButton#ReadyButton:hover {
-                background-color: #15803d;
-            }
-        """)
-
-        # ===== HOOFDLAYOUT (VERTICAAL) =====
+        # ===== LAYOUT =====
         main_layout = QVBoxLayout()
         main_layout.setSpacing(20)
 
-        # ===== KAART (FULL WIDTH) =====
+        self.deck_label = QLabel("Geen deck geladen.")
+        self.deck_label.setObjectName("FrontLabel")
+        self.deck_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(self.deck_label)
+
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setSpacing(20)
+
+        left_layout = QVBoxLayout()
+        right_layout = QVBoxLayout()
+
+        self.add_card_button = QPushButton("Nieuwe kaart")
+        self.add_card_button.clicked.connect(self.add_card)
+        left_layout.addWidget(self.add_card_button)
+
+        self.edit_cards_button = QPushButton("Kaarten bewerken")
+        self.edit_cards_button.clicked.connect(self.edit_cards)
+        left_layout.addWidget(self.edit_cards_button)
+
+        left_layout.addStretch()
+
+        self.practice_button = QPushButton("Oefenen")
+        self.practice_button.clicked.connect(self.start_practice)
+        right_layout.addWidget(self.practice_button)
+
+        right_layout.addStretch()
+
+        bottom_layout.addLayout(left_layout, 1)
+        bottom_layout.addLayout(right_layout, 1)
+
+        main_layout.addLayout(bottom_layout)
+
+        central = QWidget()
+        central.setLayout(main_layout)
+        self.setCentralWidget(central)
+
+    def update_ui_for_no_deck(self):
+        self.deck_label.setText("Geen deck geladen.")
+        self.practice_button.setDisabled(True)
+        self.add_card_button.setDisabled(True)
+        self.edit_cards_button.setDisabled(True)
+        self.save_action.setEnabled(False)
+
+    def update_ui_for_unsaved_deck(self):
+        self.practice_button.setDisabled(True)
+        self.add_card_button.setDisabled(False)
+        self.edit_cards_button.setDisabled(False)
+        self.save_action.setEnabled(True)
+
+    def update_ui_for_saved_deck(self):
+        self.practice_button.setDisabled(False)
+        self.add_card_button.setDisabled(False)
+        self.edit_cards_button.setDisabled(False)
+        self.save_action.setEnabled(True)
+
+    def set_active_deck(self, deck: dict):
+        self.current_deck = deck
+        self.cards = deck["cards"]
+        self.deck_path = None
+        self.deck_label.setText(f"Deck: {deck['name']}")
+        self.update_ui_for_unsaved_deck()
+
+    def create_new_deck(self):
+        deck = {"name": "Nieuw deck", "cards": []}
+        self.set_active_deck(deck)
+
+    def save_current_deck(self):
+        if not self.current_deck:
+            return
+
+        if not self.deck_path:
+            filepath, _ = QFileDialog.getSaveFileName(
+                self, "Deck opslaan", "", "Deck files (*.json)"
+            )
+            if not filepath:
+                return
+            if not filepath.lower().endswith(".json"):
+                filepath += ".json"
+            self.deck_path = filepath
+
+        save_deck(self.current_deck, self.deck_path)
+        self.update_ui_for_saved_deck()
+        self.deck_label.setText(f"Deck opgeslagen: {Path(self.deck_path).stem}")
+
+    def load_deck_dialog(self):
+        filepath, _ = QFileDialog.getOpenFileName(
+            self, "Deck laden", "", "Deck files (*.json)"
+        )
+        if not filepath:
+            return
+
+        try:
+            deck = load_deck(filepath)
+        except Exception as e:
+            self.deck_label.setText(f"Fout bij laden: {e}")
+            return
+
+        self.deck_path = filepath
+        self.current_deck = deck
+        self.cards = deck["cards"]
+        self.deck_label.setText(f"Deck geladen: {Path(filepath).stem}")
+        self.update_ui_for_saved_deck()
+
+    def add_card(self):
+        if not self.current_deck:
+            return
+
+        dialog = AddCardDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            front, back = dialog.get_data()
+            if not front or not back:
+                return
+            self.current_deck["cards"].append({"front": front, "back": back})
+            self.cards = self.current_deck["cards"]
+
+    def edit_cards(self):
+        if not self.current_deck:
+            return
+        dialog = EditCardsDialog(self.current_deck["cards"], self)
+        dialog.exec()
+        self.cards = self.current_deck["cards"]
+
+    def start_practice(self):
+        if not self.cards:
+            return
+        dialog = PracticeDialog(self.cards, self)
+        dialog.exec()
+
+
+# ===== PRACTICE DIALOG =====
+
+class PracticeDialog(QDialog):
+    def __init__(self, cards: list, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Oefenen")
+        self.resize(900, 600)
+        self.setStyleSheet(STYLESHEET)
+
+        self.cards = cards
+        self.current_card = None
+        self.state = None
+        self.slot_labels = []
+        self.card_complete = False
+        self.queue = []
+
+        self.setup_ui()
+        self.start_session()
+
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        layout.setSpacing(20)
+
+        # Kaartframe
         self.card_frame = QFrame()
         card_layout = QVBoxLayout()
         card_layout.setSpacing(14)
@@ -143,62 +293,39 @@ class FlashcardApp(QMainWindow):
         card_layout.addLayout(self.slots_layout)
 
         self.card_frame.setLayout(card_layout)
-        main_layout.addWidget(self.card_frame)
+        layout.addWidget(self.card_frame)
 
-        # ===== INPUT (FULL WIDTH) =====
+        # Invoer
         self.answer_input = QLineEdit()
         self.answer_input.setPlaceholderText("Typ een antwoord en druk Enter…")
         self.answer_input.returnPressed.connect(self.on_check_clicked)
-        main_layout.addWidget(self.answer_input)
+        layout.addWidget(self.answer_input)
 
-
-        # ===== ONDERSTE GEDEELTE 50/50 =====
-        bottom_layout = QHBoxLayout()
-        bottom_layout.setSpacing(20)
-
-        left_layout = QVBoxLayout()
-        right_layout = QVBoxLayout()
-
-        # ---- LINKS: BEWERKEN ----
-        self.status_label = QLabel("")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.add_card_button = QPushButton("Nieuwe kaart")
-        self.add_card_button.clicked.connect(self.add_card)
-        left_layout.addWidget(self.add_card_button)
-
-        self.edit_cards_button = QPushButton("Kaarten bewerken")
-        self.edit_cards_button.clicked.connect(self.edit_cards)
-        left_layout.addWidget(self.edit_cards_button)
-
-        left_layout.addStretch()
-
-        # ---- RECHTS: STUDY ACTIES ----
-        self.practice_button = QPushButton("Oefenen")
-        self.practice_button.clicked.connect(self.start_practice)
-        right_layout.insertWidget(0, self.practice_button)
+        # Knoppen
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
 
         self.show_answers_button = QPushButton("Toon antwoorden")
         self.show_answers_button.clicked.connect(self.show_answers)
-        right_layout.addWidget(self.show_answers_button)
+        btn_layout.addWidget(self.show_answers_button)
 
         self.next_button = QPushButton("Volgende kaart")
         self.next_button.clicked.connect(self.next_card)
         self.next_button.setObjectName("PrimaryButton")
-        right_layout.addWidget(self.next_button)
+        btn_layout.addWidget(self.next_button)
 
-        right_layout.addStretch()
+        self.stop_button = QPushButton("Stoppen")
+        self.stop_button.clicked.connect(self.reject)
+        btn_layout.addWidget(self.stop_button)
 
-        bottom_layout.addLayout(left_layout, 1)
-        bottom_layout.addLayout(right_layout, 1)
+        layout.addLayout(btn_layout)
+        self.setLayout(layout)
 
-        main_layout.addLayout(bottom_layout)
-
-        central = QWidget()
-        central.setLayout(main_layout)
-        self.setCentralWidget(central)
-
-
+    def start_session(self):
+        self.queue = list(self.cards)
+        random.shuffle(self.queue)
+        card = self.queue.pop(0)
+        self.load_card(card)
 
     def clear_slots(self):
         while self.slots_layout.count():
@@ -208,11 +335,9 @@ class FlashcardApp(QMainWindow):
                 widget.deleteLater()
         self.slot_labels = []
 
-    MAX_SLOTS = 6
-
     def build_slots(self, count):
         self.clear_slots()
-        for i in range(self.MAX_SLOTS):
+        for i in range(MAX_SLOTS):
             label = QLabel("_____")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             if i < count:
@@ -226,17 +351,19 @@ class FlashcardApp(QMainWindow):
     def load_card(self, card):
         self.current_card = card
         self.state = start_card(card)
+        self.card_complete = False
 
         self.front_label.setText(card["front"])
         self.build_slots(len(self.state["all_answers"]))
 
+        self.answer_input.setDisabled(False)
         self.answer_input.clear()
         self.answer_input.setFocus()
+        self.show_answers_button.setDisabled(False)
 
         self.next_button.setObjectName("PrimaryButton")
         self.next_button.style().unpolish(self.next_button)
         self.next_button.style().polish(self.next_button)
-
 
     def fill_next_slot(self, text):
         for label in self.slot_labels:
@@ -252,8 +379,7 @@ class FlashcardApp(QMainWindow):
             return
 
         success, status, normalized = check_answer(
-            self.answer_input.text(),
-            self.state
+            self.answer_input.text(), self.state
         )
 
         self.answer_input.clear()
@@ -265,10 +391,11 @@ class FlashcardApp(QMainWindow):
             self.fill_next_slot(normalized)
 
             if not self.state["remaining_answers"]:
+                self.card_complete = True
+                self.answer_input.clearFocus()
                 self.next_button.setObjectName("ReadyButton")
                 self.next_button.style().unpolish(self.next_button)
                 self.next_button.style().polish(self.next_button)
-
         else:
             self.show_wrong_answers()
 
@@ -287,9 +414,25 @@ class FlashcardApp(QMainWindow):
         self.next_button.style().unpolish(self.next_button)
         self.next_button.style().polish(self.next_button)
 
+    def show_answers(self):
+        if not self.current_card:
+            return
+        remaining = list(self.state["remaining_answers"])
+        for label in self.slot_labels:
+            if label.text() == "_____" and remaining:
+                label.setText(remaining.pop(0))
+                label.setObjectName("SlotLabelShown")
+                label.style().unpolish(label)
+                label.style().polish(label)
+        self.state["remaining_answers"].clear()
+        self.card_complete = True
+        self.answer_input.clearFocus()
+        self.next_button.setObjectName("ReadyButton")
+        self.next_button.style().unpolish(self.next_button)
+        self.next_button.style().polish(self.next_button)
+
     def next_card(self):
-        # Incomplete kaart terugzetten achteraan de wachtrij
-        if self.state and self.state["remaining_answers"]:
+        if not self.card_complete:
             self.queue.append(self.current_card)
 
         if not self.queue:
@@ -303,184 +446,21 @@ class FlashcardApp(QMainWindow):
         self.current_card = None
         self.state = None
         self.clear_slots()
-        self.front_label.setText("Deck doorgewerkt")
+        self.front_label.setText("Deck doorgewerkt!")
         self.answer_input.clear()
         self.answer_input.setDisabled(True)
         self.next_button.setDisabled(True)
         self.show_answers_button.setDisabled(True)
-
-    def update_ui_for_no_deck(self):
-        self.front_label.setText("Geen deck geladen.")
-        self.clear_slots()
-        self.answer_input.setDisabled(True)
-        self.next_button.setDisabled(True)
-        self.practice_button.setDisabled(True)
-        self.add_card_button.setDisabled(True)
-        self.edit_cards_button.setDisabled(True)
-        self.show_answers_button.setDisabled(True)
-        self.save_action.setEnabled(False)
-
-    def set_active_deck(self, deck: dict):
-        self.current_deck = deck
-        self.cards = deck["cards"]
-        self.current_index = 0
-        self.current_card = None
-        self.deck_path = None  # nieuw deck is nog niet opgeslagen
-
-        self.clear_slots()
-        self.front_label.setText(f"Deck: {deck['name']}")
-        self.answer_input.clear()
-
-        # Study pas na opslaan:
-        self.update_ui_for_unsaved_deck()
-
-
-    def update_ui_for_unsaved_deck(self):
-        self.answer_input.setDisabled(True)
-        self.next_button.setDisabled(True)
-        self.practice_button.setDisabled(True)
-        self.add_card_button.setDisabled(False)
-        self.edit_cards_button.setDisabled(False)
-        self.show_answers_button.setDisabled(True)
-        self.save_action.setEnabled(True)
-        self.status_label.setText("Nieuw deck aangemaakt. Eerst opslaan.")
-
-    def update_ui_for_saved_deck(self):
-        self.answer_input.setDisabled(True)
-        self.next_button.setDisabled(True)
-        self.practice_button.setDisabled(False)
-        self.add_card_button.setDisabled(False)
-        self.edit_cards_button.setDisabled(False)
-        self.show_answers_button.setDisabled(True)
-        self.save_action.setEnabled(True)
-
-    def create_new_deck(self):
-        deck = {"name": "Nieuw deck", "cards": []}
-        self.set_active_deck(deck)
-
-    def save_current_deck(self):
-        if not self.current_deck:
-            return
-
-        if not self.deck_path:
-            filepath, _ = QFileDialog.getSaveFileName(
-                self,
-                "Deck opslaan",
-                "",
-                "Deck files (*.json)"
-            )
-            if not filepath:
-                return
-
-            if not filepath.lower().endswith(".json"):
-                filepath += ".json"
-
-            self.deck_path = filepath
-
-        save_deck(self.current_deck, self.deck_path)
-
-        self.update_ui_for_saved_deck()
-        self.front_label.setText(f"Deck: {self.current_deck['name']}")
-        self.status_label.setText("Deck opgeslagen. Druk op Oefenen om te beginnen.")
-
-    def add_card(self):
-        if not self.current_deck:
-            return
-
-        dialog = AddCardDialog(self)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            front, back = dialog.get_data()
-
-            if not front or not back:
-                self.status_label.setText("Voorkant en minstens één antwoord vereist.")
-                return
-
-            card = {
-                "front": front,
-                "back": back
-            }
-
-            self.current_deck["cards"].append(card)
-            self.cards = self.current_deck["cards"]
-
-            self.status_label.setText("Kaart toegevoegd.")
-
-    def load_deck_dialog(self):
-        filepath, _ = QFileDialog.getOpenFileName(
-            self,
-            "Deck laden",
-            "",
-            "Deck files (*.json)"
-        )
-
-        if not filepath:
-            return  # gebruiker annuleert
-
-        try:
-            deck = load_deck(filepath)
-        except Exception as e:
-            self.status_label.setText(f"Fout bij laden: {e}")
-            return
-
-        self.deck_path = filepath
-        deck_name = Path(filepath).stem
-        self.set_active_deck(deck)
-        self.update_ui_for_saved_deck()
-        self.front_label.setText(f"Deck geladen: {deck_name}")
-        self.status_label.setText("Druk op Oefenen om te beginnen.")
-    
-    def show_answers(self):
-        if not self.current_card:
-            return
-
-        remaining = list(self.state["remaining_answers"])
-        for label in self.slot_labels:
-            if label.text() == "_____" and remaining:
-                label.setText(remaining.pop(0))
-                label.setObjectName("SlotLabelShown")
-                label.style().unpolish(label)
-                label.style().polish(label)
-
-        self.state["remaining_answers"].clear()
-        self.card_complete = True
-        self.answer_input.clearFocus()
-        self.next_button.setObjectName("ReadyButton")
-        self.next_button.style().unpolish(self.next_button)
-        self.next_button.style().polish(self.next_button)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Space:
-            if self.current_card and self.state and not self.state["remaining_answers"]:
+            if self.card_complete:
                 self.next_card()
         else:
             super().keyPressEvent(event)
 
-    def start_practice(self):
-        if not self.cards:
-            return
 
-        self.queue = list(self.cards)
-        random.shuffle(self.queue)
-
-        self.answer_input.setDisabled(False)
-        self.next_button.setDisabled(False)
-        self.show_answers_button.setDisabled(False)
-
-        card = self.queue.pop(0)
-        self.load_card(card)
-
-
-
-
-    def edit_cards(self):
-        if not self.current_deck:
-            return
-
-        dialog = EditCardsDialog(self.current_deck["cards"], self)
-        dialog.exec()
-        self.cards = self.current_deck["cards"]
-
+# ===== EDIT CARDS DIALOG =====
 
 class EditCardsDialog(QDialog):
     def __init__(self, cards: list, parent=None):
@@ -492,15 +472,14 @@ class EditCardsDialog(QDialog):
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 
-        self.scroll_area = QWidget()
+        self.scroll_widget = QWidget()
         self.cards_layout = QVBoxLayout()
         self.cards_layout.setSpacing(10)
-        self.scroll_area.setLayout(self.cards_layout)
+        self.scroll_widget.setLayout(self.cards_layout)
 
-        from PySide6.QtWidgets import QScrollArea
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setWidget(self.scroll_area)
+        scroll.setWidget(self.scroll_widget)
         self.main_layout.addWidget(scroll)
 
         close_btn = QPushButton("Sluiten")
@@ -517,7 +496,6 @@ class EditCardsDialog(QDialog):
 
         for i, card in enumerate(self.cards):
             frame = QFrame()
-            frame.setObjectName("CardEditFrame")
             layout = QVBoxLayout()
             layout.setSpacing(6)
 
@@ -530,7 +508,6 @@ class EditCardsDialog(QDialog):
             layout.addWidget(front_label)
 
             front_input = QLineEdit(card["front"])
-            front_input.setPlaceholderText("Voorkant")
             front_input.textChanged.connect(lambda text, c=card: c.update({"front": text}))
             layout.addWidget(front_input)
 
@@ -558,12 +535,14 @@ class EditCardsDialog(QDialog):
         self.build_card_list()
 
 
+# ===== ADD CARD DIALOG =====
+
 class AddCardDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.setWindowTitle("Kaart toevoegen")
-        self.resize(400, 300)
+        self.resize(400, 400)
 
         layout = QVBoxLayout()
 
@@ -573,7 +552,6 @@ class AddCardDialog(QDialog):
 
         self.back_inputs = []
 
-        # Standaard 6 antwoordvelden
         for i in range(6):
             back = QLineEdit()
             back.setPlaceholderText(f"Antwoord {i+1}")
@@ -584,20 +562,13 @@ class AddCardDialog(QDialog):
             QDialogButtonBox.StandardButton.Ok |
             QDialogButtonBox.StandardButton.Cancel
         )
-
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-
         layout.addWidget(buttons)
 
         self.setLayout(layout)
 
     def get_data(self):
         front = self.front_input.text().strip()
-        back = [
-            field.text().strip()
-            for field in self.back_inputs
-            if field.text().strip()
-        ]
-
+        back = [f.text().strip() for f in self.back_inputs if f.text().strip()]
         return front, back

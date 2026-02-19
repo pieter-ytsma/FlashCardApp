@@ -63,6 +63,12 @@ class FlashcardApp(QMainWindow):
                 font-size: 32px;
                 padding: 8px;
             }
+            QLabel#SlotLabelEmpty {
+                font-size: 18px;
+                padding: 10px;
+                background-color: #1a1a1a;
+                border-radius: 10px;
+            }
             QLabel#SlotLabel {
                 font-size: 18px;
                 padding: 10px;
@@ -202,14 +208,20 @@ class FlashcardApp(QMainWindow):
                 widget.deleteLater()
         self.slot_labels = []
 
+    MAX_SLOTS = 6
+
     def build_slots(self, count):
         self.clear_slots()
-        for _ in range(count):
+        for i in range(self.MAX_SLOTS):
             label = QLabel("_____")
-            label.setObjectName("SlotLabel")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            if i < count:
+                label.setObjectName("SlotLabel")
+                self.slot_labels.append(label)
+            else:
+                label.setObjectName("SlotLabelEmpty")
+                label.setText("")
             self.slots_layout.addWidget(label)
-            self.slot_labels.append(label)
 
     def load_card(self, card):
         self.current_card = card
@@ -561,8 +573,8 @@ class AddCardDialog(QDialog):
 
         self.back_inputs = []
 
-        # Standaard 3 antwoordvelden
-        for i in range(3):
+        # Standaard 6 antwoordvelden
+        for i in range(6):
             back = QLineEdit()
             back.setPlaceholderText(f"Antwoord {i+1}")
             layout.addWidget(back)

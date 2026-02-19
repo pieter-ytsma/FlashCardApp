@@ -83,6 +83,18 @@ class FlashcardApp(QMainWindow):
             QPushButton:hover {
                 background-color: #3a3a3a;
             }
+            QPushButton#PrimaryButton {
+                background-color: #2563eb;
+            }
+            QPushButton#PrimaryButton:hover {
+                background-color: #1d4ed8;
+            }
+            QPushButton#ReadyButton {
+                background-color: #16a34a;
+            }
+            QPushButton#ReadyButton:hover {
+                background-color: #15803d;
+            }
         """)
 
         # ===== HOOFDLAYOUT (VERTICAAL) =====
@@ -142,6 +154,7 @@ class FlashcardApp(QMainWindow):
 
         self.next_button = QPushButton("Volgende kaart")
         self.next_button.clicked.connect(self.next_card)
+        self.next_button.setObjectName("PrimaryButton")
         right_layout.addWidget(self.next_button)
 
         right_layout.addStretch()
@@ -185,6 +198,11 @@ class FlashcardApp(QMainWindow):
         self.answer_input.clear()
         self.answer_input.setFocus()
 
+        self.next_button.setObjectName("PrimaryButton")
+        self.next_button.style().unpolish(self.next_button)
+        self.next_button.style().polish(self.next_button)
+
+
     def fill_next_slot(self, text):
         for label in self.slot_labels:
             if label.text() == "_____":
@@ -210,7 +228,11 @@ class FlashcardApp(QMainWindow):
             self.feedback_label.setText("Correct ✓")
 
             if not self.state["remaining_answers"]:
-                self.feedback_label.setText("Alles gevonden 🎉")
+                self.feedback_label.setText("Alles gevonden ✓")
+                self.next_button.setObjectName("ReadyButton")
+                self.next_button.style().unpolish(self.next_button)
+                self.next_button.style().polish(self.next_button)
+
         else:
             self.feedback_label.setText("Fout ✗ (of al ingevuld)")
 
@@ -346,6 +368,13 @@ class FlashcardApp(QMainWindow):
 
         answers = ", ".join(self.current_card["back"])
         self.feedback_label.setText(f"Antwoorden: {answers}")
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Space:
+            if self.current_card and not self.state["remaining_answers"]:
+                self.next_card()
+        else:
+            super().keyPressEvent(event)
 
 
 

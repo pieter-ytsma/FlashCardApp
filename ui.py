@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QLabel,
-    QPushButton, QLineEdit, QFrame, QFileDialog
+    QPushButton, QLineEdit, QFrame, QFileDialog,
+    QDialog, QDialogButtonBox
 )
 from storage import save_deck
 from PySide6.QtCore import Qt
@@ -270,18 +271,70 @@ class FlashcardApp(QMainWindow):
         if not self.current_deck:
             return
 
-        front = "test"
-        back = ["antwoord"]
+        dialog = AddCardDialog(self)
 
-        card = {
-            "front": front,
-            "back": back
-        }
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            front, back = dialog.get_data()
 
-        self.current_deck["cards"].append(card)
-        self.cards = self.current_deck["cards"]
+            if not front or not back:
+                self.status_label.setText("Voorkant en minstens één antwoord vereist.")
+                return
 
-        self.status_label.setText("Kaart toegevoegd.")
+            card = {
+                "front": front,
+                "back": back
+            }
+
+            self.current_deck["cards"].append(card)
+            self.cards = self.current_deck["cards"]
+
+            self.status_label.setText("Kaart toegevoegd.")
 
     def load_deck_dialog(self):
         self.status_label.setText("Deck laden nog niet geïmplementeerd.")
+
+
+
+class AddCardDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setWindowTitle("Kaart toevoegen")
+        self.resize(400, 300)
+
+        layout = QVBoxLayout()
+
+        self.front_input = QLineEdit()
+        self.front_input.setPlaceholderText("Voorkant")
+        layout.addWidget(self.front_input)
+
+        self.back_inputs = []
+
+        # Standaard 3 antwoordvelden
+        for i in range(3):
+            back = QLineEdit()
+            back.setPlaceholderText(f"Antwoord {i+1}")
+            layout.addWidget(back)
+            self.back_inputs.append(back)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok |
+            QDialogButtonBox.StandardButton.Cancel
+        )
+
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+        layout.addWidget(buttons)
+
+        self.setLayout(layout)
+
+    def get_data(self):
+        front = self.front_input.text().strip()
+        back = [
+            field.text().strip()
+            for field in self.back_inputs
+            if field.text().strip()
+        ]
+
+        return front, back

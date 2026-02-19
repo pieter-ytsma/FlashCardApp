@@ -5,6 +5,8 @@ from PySide6.QtWidgets import (
 )
 
 
+import random
+from pathlib import Path
 from storage import save_deck, load_deck
 from PySide6.QtCore import Qt
 from helpers import start_card, check_answer
@@ -22,6 +24,8 @@ class FlashcardApp(QMainWindow):
         self.current_card = None
         self.state = None
         self.slot_labels = []
+        self.queue = []
+        self.card_complete = False
 
         self.setup_ui()
         self.update_ui_for_no_deck()
@@ -148,6 +152,10 @@ class FlashcardApp(QMainWindow):
         left_layout.addStretch()
 
         # ---- RECHTS: STUDY ACTIES ----
+        self.practice_button = QPushButton("Oefenen")
+        self.practice_button.clicked.connect(self.start_practice)
+        right_layout.insertWidget(0, self.practice_button)
+
         self.show_answers_button = QPushButton("Toon antwoorden")
         self.show_answers_button.clicked.connect(self.show_answers)
         right_layout.addWidget(self.show_answers_button)
@@ -190,6 +198,7 @@ class FlashcardApp(QMainWindow):
     def load_card(self, card):
         self.current_card = card
         self.state = start_card(card)
+        self.card_complete = False
 
         self.front_label.setText(card["front"])
         self.build_slots(len(self.state["all_answers"]))
@@ -228,7 +237,12 @@ class FlashcardApp(QMainWindow):
             self.feedback_label.setText("Correct ✓")
 
             if not self.state["remaining_answers"]:
+                self.card_complete = True
                 self.feedback_label.setText("Alles gevonden ✓")
+                self.next_button.setObjectName("ReadyButton")
+                self.next_button.style().unpolish(self.next_button)
+                self.next_button.style().polish(self.next_button)
+                self.answer_input.clearFocus()
                 self.next_button.setObjectName("ReadyButton")
                 self.next_button.style().unpolish(self.next_button)
                 self.next_button.style().polish(self.next_button)
@@ -237,17 +251,32 @@ class FlashcardApp(QMainWindow):
             self.feedback_label.setText("Fout ✗ (of al ingevuld)")
 
     def next_card(self):
-        self.current_index += 1
-        if self.current_index >= len(self.cards):
-            self.current_index = 0
+        if not self.card_complete:
+            self.queue.append(self.current_card)
 
-        self.load_card(self.cards[self.current_index])
+        if not self.queue:
+            self.show_deck_finished()
+            return
+
+        card = self.queue.pop(0)
+        self.load_card(card)
+
+    def show_deck_finished(self):
+        self.current_card = None
+        self.state = None
+        self.clear_slots()
+        self.front_label.setText("Deck doorgewerkt")
+        self.feedback_label.setText("")
+        self.answer_input.clear()
+        self.answer_input.setDisabled(True)
+        self.next_button.setDisabled(True)
 
     def update_ui_for_no_deck(self):
         self.front_label.setText("Geen deck geladen.")
         self.clear_slots()
         self.answer_input.setDisabled(True)
         self.next_button.setDisabled(True)
+        self.practice_button.setDisabled(True)
         self.save_action.setEnabled(False)
         self.status_label.setText("Geen deck geladen.")
 
@@ -255,13 +284,13 @@ class FlashcardApp(QMainWindow):
         self.current_deck = deck
         self.cards = deck["cards"]
         self.current_index = 0
+        self.current_card = None
         self.deck_path = None  # nieuw deck is nog niet opgeslagen
-        self.status_label.setText("Nieuw deck aangemaakt. Eerst opslaan.")
 
-        if self.cards:
-            self.load_card(self.cards[self.current_index])
-        else:
-            self.front_label.setText("Deck is leeg.")
+        self.clear_slots()
+        self.front_label.setText(f"Deck: {deck['name']}")
+        self.feedback_label.setText("")
+        self.answer_input.clear()
 
         # Study pas na opslaan:
         self.update_ui_for_unsaved_deck()
@@ -270,11 +299,14 @@ class FlashcardApp(QMainWindow):
     def update_ui_for_unsaved_deck(self):
         self.answer_input.setDisabled(True)
         self.next_button.setDisabled(True)
+        self.practice_button.setDisabled(True)
         self.save_action.setEnabled(True)
+        self.status_label.setText("Nieuw deck aangemaakt. Eerst opslaan.")
 
     def update_ui_for_saved_deck(self):
-        self.answer_input.setDisabled(False)
-        self.next_button.setDisabled(False)
+        self.answer_input.setDisabled(True)
+        self.next_button.setDisabled(True)
+        self.practice_button.setDisabled(False)
         self.save_action.setEnabled(True)
 
     def create_new_deck(self):
@@ -303,12 +335,8 @@ class FlashcardApp(QMainWindow):
         save_deck(self.current_deck, self.deck_path)
 
         self.update_ui_for_saved_deck()
-
-        if self.cards:
-            self.current_index = 0
-            self.load_card(self.cards[self.current_index])
-        else:
-            self.front_label.setText("Deck is leeg.")
+        self.front_label.setText(f"Deck: {self.current_deck['name']}")
+        self.status_label.setText("Deck opgeslagen. Druk op Oefenen om te beginnen.")
 
     def add_card(self):
         if not self.current_deck:
@@ -351,16 +379,11 @@ class FlashcardApp(QMainWindow):
             return
 
         self.deck_path = filepath
+        deck_name = Path(filepath).stem
         self.set_active_deck(deck)
         self.update_ui_for_saved_deck()
-
-        if self.cards:
-            self.current_index = 0
-            self.load_card(self.cards[self.current_index])
-        else:
-            self.front_label.setText("Deck is leeg.")
-
-        self.status_label.setText("Deck geladen.")
+        self.front_label.setText(f"Deck geladen: {deck_name}")
+        self.status_label.setText("Druk op Oefenen om te beginnen.")
     
     def show_answers(self):
         if not self.current_card:
@@ -371,11 +394,23 @@ class FlashcardApp(QMainWindow):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Space:
-            if self.current_card and not self.state["remaining_answers"]:
+            if self.current_card and self.state and not self.state["remaining_answers"]:
                 self.next_card()
         else:
             super().keyPressEvent(event)
 
+    def start_practice(self):
+        if not self.cards:
+            return
+
+        self.queue = list(self.cards)
+        random.shuffle(self.queue)
+
+        self.answer_input.setDisabled(False)
+        self.next_button.setDisabled(False)
+
+        card = self.queue.pop(0)
+        self.load_card(card)
 
 
 

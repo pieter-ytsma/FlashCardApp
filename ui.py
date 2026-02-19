@@ -123,6 +123,11 @@ class FlashcardApp(QMainWindow):
         self.save_action = self.deck_menu.addAction("Deck opslaan")
         self.save_action.triggered.connect(self.save_current_deck)
 
+        self.options_menu = self.menu.addMenu("Opties")
+        self.repeat_action = self.options_menu.addAction("Fout beantwoorde kaarten herhalen")
+        self.repeat_action.setCheckable(True)
+        self.repeat_action.setChecked(True)
+
         # ===== LAYOUT =====
         main_layout = QVBoxLayout()
         main_layout.setSpacing(20)
@@ -252,20 +257,22 @@ class FlashcardApp(QMainWindow):
     def start_practice(self):
         if not self.cards:
             return
-        dialog = PracticeDialog(self.cards, self)
+        repeat_incorrect = self.repeat_action.isChecked()
+        dialog = PracticeDialog(self.cards, repeat_incorrect, self)
         dialog.exec()
 
 
 # ===== PRACTICE DIALOG =====
 
 class PracticeDialog(QDialog):
-    def __init__(self, cards: list, parent=None):
+    def __init__(self, cards: list, repeat_incorrect: bool = True, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Oefenen")
         self.resize(900, 600)
         self.setStyleSheet(STYLESHEET)
 
         self.cards = cards
+        self.repeat_incorrect = repeat_incorrect
         self.current_card = None
         self.state = None
         self.slot_labels = []
@@ -333,7 +340,7 @@ class PracticeDialog(QDialog):
             item = self.slots_layout.takeAt(0)
             widget = item.widget()
             if widget:
-                widget.deleteLater()
+                widget.setParent(None)
         self.slot_labels = []
 
     def build_slots(self, count):
@@ -354,6 +361,7 @@ class PracticeDialog(QDialog):
         self.state = start_card(card)
         self.card_complete = False
         self.correct_this_card = 0
+        self.answered_correctly = True
 
         self.front_label.setText(card["front"])
         self.build_slots(len(self.state["all_answers"]))
@@ -403,6 +411,7 @@ class PracticeDialog(QDialog):
             return
 
         if status == "wrong":
+            self.answered_correctly = False
             self.show_wrong_answers()
 
     def show_wrong_answers(self):
@@ -423,6 +432,7 @@ class PracticeDialog(QDialog):
     def show_answers(self):
         if not self.current_card:
             return
+        self.answered_correctly = False
         remaining = list(self.state["remaining_answers"])
         for label in self.slot_labels:
             if label.objectName() == "SlotLabel" and remaining:
@@ -438,11 +448,18 @@ class PracticeDialog(QDialog):
         self.next_button.style().polish(self.next_button)
 
     def next_card(self):
-        if not self.card_complete:
-            self.queue.append(self.current_card)
-        else:
+        # score vastleggen als de kaart afgerond is
+        if self.card_complete:
             total = len(self.state["all_answers"])
             self.card_scores.append((self.correct_this_card, total))
+
+            # alleen herhalen als NIET volledig correct beantwoord
+            if self.repeat_incorrect and self.correct_this_card < total:
+                self.queue.append(self.current_card)
+        else:
+            # onafgemaakte kaart altijd herhalen als repeat_incorrect aan staat
+            if self.repeat_incorrect:
+                self.queue.append(self.current_card)
 
         if not self.queue:
             self.show_deck_finished()

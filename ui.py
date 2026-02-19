@@ -24,8 +24,7 @@ class FlashcardApp(QMainWindow):
         self.current_card = None
         self.state = None
         self.slot_labels = []
-        self.queue = []
-        self.card_complete = False
+        self.queue = []  # willekeurige wachtrij tijdens oefensessie
 
         self.setup_ui()
         self.update_ui_for_no_deck()
@@ -68,6 +67,18 @@ class FlashcardApp(QMainWindow):
                 font-size: 18px;
                 padding: 10px;
                 background-color: #2a2a2a;
+                border-radius: 10px;
+            }
+            QLabel#SlotLabelCorrect {
+                font-size: 18px;
+                padding: 10px;
+                background-color: #14532d;
+                border-radius: 10px;
+            }
+            QLabel#SlotLabelWrong {
+                font-size: 18px;
+                padding: 10px;
+                background-color: #7f1d1d;
                 border-radius: 10px;
             }
             QLineEdit {
@@ -198,7 +209,6 @@ class FlashcardApp(QMainWindow):
     def load_card(self, card):
         self.current_card = card
         self.state = start_card(card)
-        self.card_complete = False
 
         self.front_label.setText(card["front"])
         self.build_slots(len(self.state["all_answers"]))
@@ -216,6 +226,9 @@ class FlashcardApp(QMainWindow):
         for label in self.slot_labels:
             if label.text() == "_____":
                 label.setText(text)
+                label.setObjectName("SlotLabelCorrect")
+                label.style().unpolish(label)
+                label.style().polish(label)
                 return
 
     def on_check_clicked(self):
@@ -237,21 +250,33 @@ class FlashcardApp(QMainWindow):
             self.feedback_label.setText("Correct ✓")
 
             if not self.state["remaining_answers"]:
-                self.card_complete = True
                 self.feedback_label.setText("Alles gevonden ✓")
-                self.next_button.setObjectName("ReadyButton")
-                self.next_button.style().unpolish(self.next_button)
-                self.next_button.style().polish(self.next_button)
-                self.answer_input.clearFocus()
                 self.next_button.setObjectName("ReadyButton")
                 self.next_button.style().unpolish(self.next_button)
                 self.next_button.style().polish(self.next_button)
 
         else:
-            self.feedback_label.setText("Fout ✗ (of al ingevuld)")
+            self.feedback_label.setText("Fout ✗")
+            self.show_wrong_answers()
+
+    def show_wrong_answers(self):
+        remaining = list(self.state["remaining_answers"])
+        for label in self.slot_labels:
+            if label.text() == "_____" and remaining:
+                label.setText(remaining.pop(0))
+                label.setObjectName("SlotLabelWrong")
+                label.style().unpolish(label)
+                label.style().polish(label)
+        self.state["remaining_answers"].clear()
+        self.card_complete = True
+        self.answer_input.clearFocus()
+        self.next_button.setObjectName("ReadyButton")
+        self.next_button.style().unpolish(self.next_button)
+        self.next_button.style().polish(self.next_button)
 
     def next_card(self):
-        if not self.card_complete:
+        # Incomplete kaart terugzetten achteraan de wachtrij
+        if self.state and self.state["remaining_answers"]:
             self.queue.append(self.current_card)
 
         if not self.queue:

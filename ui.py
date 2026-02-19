@@ -101,8 +101,9 @@ class FlashcardApp(QMainWindow):
                 border-radius: 10px;
                 font-size: 15px;
             }
-            QPushButton:hover {
-                background-color: #3a3a3a;
+            QPushButton:disabled {
+                background-color: #1a1a1a;
+                color: #444;
             }
             QPushButton#PrimaryButton {
                 background-color: #2563eb;
@@ -294,6 +295,7 @@ class FlashcardApp(QMainWindow):
         self.answer_input.clear()
         self.answer_input.setDisabled(True)
         self.next_button.setDisabled(True)
+        self.show_answers_button.setDisabled(True)
 
     def update_ui_for_no_deck(self):
         self.front_label.setText("Geen deck geladen.")
@@ -301,8 +303,10 @@ class FlashcardApp(QMainWindow):
         self.answer_input.setDisabled(True)
         self.next_button.setDisabled(True)
         self.practice_button.setDisabled(True)
+        self.add_card_button.setDisabled(True)
+        self.edit_cards_button.setDisabled(True)
+        self.show_answers_button.setDisabled(True)
         self.save_action.setEnabled(False)
-        self.status_label.setText("Geen deck geladen.")
 
     def set_active_deck(self, deck: dict):
         self.current_deck = deck
@@ -323,6 +327,9 @@ class FlashcardApp(QMainWindow):
         self.answer_input.setDisabled(True)
         self.next_button.setDisabled(True)
         self.practice_button.setDisabled(True)
+        self.add_card_button.setDisabled(False)
+        self.edit_cards_button.setDisabled(False)
+        self.show_answers_button.setDisabled(True)
         self.save_action.setEnabled(True)
         self.status_label.setText("Nieuw deck aangemaakt. Eerst opslaan.")
 
@@ -330,6 +337,9 @@ class FlashcardApp(QMainWindow):
         self.answer_input.setDisabled(True)
         self.next_button.setDisabled(True)
         self.practice_button.setDisabled(False)
+        self.add_card_button.setDisabled(False)
+        self.edit_cards_button.setDisabled(False)
+        self.show_answers_button.setDisabled(True)
         self.save_action.setEnabled(True)
 
     def create_new_deck(self):
@@ -443,6 +453,7 @@ class FlashcardApp(QMainWindow):
 
         self.answer_input.setDisabled(False)
         self.next_button.setDisabled(False)
+        self.show_answers_button.setDisabled(False)
 
         card = self.queue.pop(0)
         self.load_card(card)

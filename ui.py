@@ -386,8 +386,9 @@ class PracticeDialog(QDialog):
         self.answer_input.setFocus()
 
         if status == "empty":
-            pass
-        elif success:
+            return
+
+        if success:
             self.fill_next_slot(normalized)
 
             if not self.state["remaining_answers"]:
@@ -396,7 +397,9 @@ class PracticeDialog(QDialog):
                 self.next_button.setObjectName("ReadyButton")
                 self.next_button.style().unpolish(self.next_button)
                 self.next_button.style().polish(self.next_button)
-        else:
+            return
+
+        if status == "wrong":
             self.show_wrong_answers()
 
     def show_wrong_answers(self):
@@ -453,11 +456,21 @@ class PracticeDialog(QDialog):
         self.show_answers_button.setDisabled(True)
 
     def keyPressEvent(self, event):
+        # Space = volgende kaart wanneer klaar (zoals je al had)
         if event.key() == Qt.Key.Key_Space:
             if self.card_complete:
                 self.next_card()
-        else:
-            super().keyPressEvent(event)
+            event.accept()
+            return
+
+        # Enter/Return: als de input focus heeft, alleen checken en NIET laten doorpropageren
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if self.answer_input and self.answer_input.hasFocus():
+                self.on_check_clicked()
+                event.accept()
+                return
+
+        super().keyPressEvent(event)
 
 
 # ===== EDIT CARDS DIALOG =====

@@ -271,6 +271,7 @@ class PracticeDialog(QDialog):
         self.slot_labels = []
         self.card_complete = False
         self.queue = []
+        self.card_scores = []
 
         self.setup_ui()
         self.start_session()
@@ -352,6 +353,7 @@ class PracticeDialog(QDialog):
         self.current_card = card
         self.state = start_card(card)
         self.card_complete = False
+        self.correct_this_card = 0
 
         self.front_label.setText(card["front"])
         self.build_slots(len(self.state["all_answers"]))
@@ -389,6 +391,7 @@ class PracticeDialog(QDialog):
             return
 
         if success:
+            self.correct_this_card += 1
             self.fill_next_slot(normalized)
 
             if not self.state["remaining_answers"]:
@@ -437,6 +440,9 @@ class PracticeDialog(QDialog):
     def next_card(self):
         if not self.card_complete:
             self.queue.append(self.current_card)
+        else:
+            total = len(self.state["all_answers"])
+            self.card_scores.append((self.correct_this_card, total))
 
         if not self.queue:
             self.show_deck_finished()
@@ -446,10 +452,16 @@ class PracticeDialog(QDialog):
         self.load_card(card)
 
     def show_deck_finished(self):
+        if self.card_scores:
+            score = sum(c / t for c, t in self.card_scores) / len(self.card_scores) * 10
+            score_text = f"Deck doorgewerkt!  {score:.1f} / 10"
+        else:
+            score_text = "Deck doorgewerkt!"
+
         self.current_card = None
         self.state = None
         self.clear_slots()
-        self.front_label.setText("Deck doorgewerkt!")
+        self.front_label.setText(score_text)
         self.answer_input.clear()
         self.answer_input.setDisabled(True)
         self.next_button.setDisabled(True)

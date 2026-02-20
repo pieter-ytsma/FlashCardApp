@@ -1,5 +1,5 @@
 def norm(s: str) -> str:
-    return s.strip().lower()
+    return s.strip()
 
 
 def start_card(card: dict):

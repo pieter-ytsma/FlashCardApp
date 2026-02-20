@@ -641,6 +641,8 @@ class FlashcardApp(QMainWindow):
         self._dirty = False
         self.update_ui_for_saved_deck()
         self._update_title()
+        name = Path(self.deck_path).stem
+        self.statusBar().showMessage(T["deck_saved"].format(name=name), 3000)
 
     def load_deck_dialog(self):
         filepath, _ = QFileDialog.getOpenFileName(

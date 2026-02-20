@@ -433,24 +433,24 @@ class FlashcardApp(QMainWindow):
         left_layout = QVBoxLayout()
         right_layout = QVBoxLayout()
 
-        self.add_card_button = QPushButton(T["new_card"])
+        self.add_card_button = QPushButton(T["new_card"] + "  (N)")
         self.add_card_button.clicked.connect(self.add_card)
         self.add_card_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         left_layout.addWidget(self.add_card_button)
 
-        self.edit_cards_button = QPushButton(T["edit_cards"])
+        self.edit_cards_button = QPushButton(T["edit_cards"] + "  (E)")
         self.edit_cards_button.clicked.connect(self.edit_cards)
         self.edit_cards_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         left_layout.addWidget(self.edit_cards_button)
 
         left_layout.addStretch()
 
-        self.flashcard_button = QPushButton(T["flashcard"])
+        self.flashcard_button = QPushButton(T["flashcard"] + "  ↵")
         self.flashcard_button.clicked.connect(self.start_flashcard)
         self.flashcard_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         right_layout.addWidget(self.flashcard_button)
 
-        self.practice_button = QPushButton(T["practice"])
+        self.practice_button = QPushButton(T["practice"] + "  ␣")
         self.practice_button.clicked.connect(self.start_practice)
         self.practice_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         right_layout.addWidget(self.practice_button)
@@ -484,10 +484,10 @@ class FlashcardApp(QMainWindow):
         self.lang_menu.setTitle(T["menu_language"])
 
         # Update knoppen
-        self.add_card_button.setText(T["new_card"])
-        self.edit_cards_button.setText(T["edit_cards"])
-        self.flashcard_button.setText(T["flashcard"])
-        self.practice_button.setText(T["practice"])
+        self.add_card_button.setText(T["new_card"] + "  (N)")
+        self.edit_cards_button.setText(T["edit_cards"] + "  (E)")
+        self.flashcard_button.setText(T["flashcard"] + "  ↵")
+        self.practice_button.setText(T["practice"] + "  ␣")
 
         # Update deck label
         if not self.current_deck:
@@ -646,6 +646,16 @@ class FlashcardApp(QMainWindow):
         dialog.exec()
 
     def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_N and self.add_card_button.isEnabled():
+            if self.current_deck:
+                self.add_card()
+                event.accept()
+                return
+        elif event.key() == Qt.Key.Key_E:
+            if self.current_deck:
+                self.edit_cards()
+                event.accept()
+                return
         if self.cards:
             if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
                 self.start_flashcard()

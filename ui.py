@@ -886,6 +886,7 @@ class PracticeDialog(QDialog):
                 label.style().polish(label)
         self.state["remaining_answers"].clear()
         self.card_complete = True
+        self.show_answers_button.setDisabled(True)
         self.answer_input.clearFocus()
         self.next_button.setObjectName("ReadyButton")
         self.next_button.style().unpolish(self.next_button)

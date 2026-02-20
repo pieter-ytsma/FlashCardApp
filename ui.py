@@ -1,14 +1,54 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QLineEdit, QFrame, QFileDialog,
-    QDialog, QDialogButtonBox, QScrollArea
+    QDialog, QDialogButtonBox, QScrollArea, QToolButton
 )
 
 import random
 from pathlib import Path
 from storage import save_deck, load_deck
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QFont
 from helpers import start_card, check_answer
+
+
+class DeletableLineEdit(QLineEdit):
+    def __init__(self, text="", on_delete=None, icon_color="white", parent=None):
+        super().__init__(text, parent)
+        self._btn = QToolButton(self)
+        self._btn.setText("×")
+        self._btn.setFixedSize(28, 28)
+
+        font = QFont(self.font())
+        font.setPointSize(10)
+        self._btn.setFont(font)
+
+        self._btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn.setStyleSheet(f"""
+            QToolButton {{
+                background: transparent;
+                color: {icon_color};
+                border: none;
+                font-size: 14px;
+                font-weight: 600;
+            }}
+            QToolButton:hover {{
+                color: #f87171;
+                background: rgba(239,68,68,0.15);
+                border-radius: 6px;
+            }}
+        """)
+        if on_delete:
+            self._btn.clicked.connect(on_delete)
+        self.setStyleSheet("QLineEdit { padding-right: 36px; }")
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        sz = self._btn.size()
+        self._btn.move(
+            self.width() - sz.width() - 4,
+            (self.height() - sz.height()) // 2
+        )
 
 
 TRANSLATIONS = {
@@ -104,8 +144,8 @@ STYLESHEET_DARK = """
     }
     QFrame {
         background-color: #1e1e1e;
-        border-radius: 16px;
-        padding: 24px;
+        border-radius: 12px;
+        padding: 0px;
     }
     QLabel#FrontLabel {
         font-size: 32px;
@@ -144,8 +184,8 @@ STYLESHEET_DARK = """
     QLineEdit {
         padding: 12px;
         border-radius: 10px;
-        background-color: #2d2d2d;
-        border: none;
+        background-color: #1f1f1f;
+        border: 1px solid #2a2a2a;
         font-size: 16px;
         color: white;
     }
@@ -176,6 +216,21 @@ STYLESHEET_DARK = """
     QPushButton#ReadyButton:hover {
         background-color: #15803d;
     }
+    QLineEdit:focus {
+        border: 1px solid #2563eb;
+    }
+    QPushButton#SecondaryButton {
+        background-color: transparent;
+        color: #9ca3af;
+        border: 1px dashed #2a2a2a;
+        border-radius: 8px;
+        font-size: 13px;
+        padding: 8px;
+    }
+    QPushButton#SecondaryButton:hover {
+        border-color: #2563eb;
+        color: white;
+    }
 """
 
 STYLESHEET_LIGHT = """
@@ -186,8 +241,8 @@ STYLESHEET_LIGHT = """
     }
     QFrame {
         background-color: #ffffff;
-        border-radius: 16px;
-        padding: 24px;
+        border-radius: 12px;
+        padding: 0px;
     }
     QLabel#FrontLabel {
         font-size: 32px;
@@ -265,6 +320,21 @@ STYLESHEET_LIGHT = """
     }
     QPushButton#ReadyButton:hover {
         background-color: #15803d;
+    }
+    QLineEdit:focus {
+        border: 1px solid #2563eb;
+    }
+    QPushButton#SecondaryButton {
+        background-color: transparent;
+        color: #9ca3af;
+        border: 1px dashed #d0d0d0;
+        border-radius: 8px;
+        font-size: 13px;
+        padding: 8px;
+    }
+    QPushButton#SecondaryButton:hover {
+        border-color: #2563eb;
+        color: #111;
     }
 """
 
@@ -863,7 +933,7 @@ class EditCardsDialog(QDialog):
 
         self.scroll_widget = QWidget()
         self.cards_layout = QVBoxLayout()
-        self.cards_layout.setSpacing(10)
+        self.cards_layout.setSpacing(16)
         self.scroll_widget.setLayout(self.cards_layout)
 
         scroll = QScrollArea()
@@ -886,47 +956,47 @@ class EditCardsDialog(QDialog):
         for i, card in enumerate(self.cards):
             frame = QFrame()
             layout = QVBoxLayout()
-            layout.setSpacing(6)
+            layout.setSpacing(4)
+            layout.setContentsMargins(16, 16, 16, 16)
 
             number_label = QLabel(T["card_number"].format(n=i + 1))
-            number_label.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
+            number_label.setStyleSheet("font-size: 18px; font-weight: 600; color: white;")
             layout.addWidget(number_label)
+            layout.addSpacing(8)
 
             front_label = QLabel(T["front"])
-            front_label.setStyleSheet("color: #888; font-size: 12px;")
+            front_label.setStyleSheet("color: #9ca3af; font-size: 12px")
             layout.addWidget(front_label)
+            layout.addSpacing(4)
 
             front_input = QLineEdit(card["front"])
             front_input.textChanged.connect(lambda text, c=card: c.update({"front": text}))
             layout.addWidget(front_input)
+            layout.addSpacing(12)
 
             back_label = QLabel(T["answers"])
-            back_label.setStyleSheet("color: #888; font-size: 12px; margin-top: 6px;")
+            back_label.setStyleSheet("color: #9ca3af; font-size: 12px")
             layout.addWidget(back_label)
+            layout.addSpacing(4)
 
             for j, ans in enumerate(card["back"]):
-                row = QWidget()
-                row_layout = QHBoxLayout()
-                row_layout.setContentsMargins(0, 0, 0, 0)
-                row_layout.setSpacing(6)
-
-                ans_input = QLineEdit(ans)
+                icon_color = "white" if self.parent() and self.parent().dark_theme_action.isChecked() else "#111"
+                ans_input = DeletableLineEdit(
+                    ans,
+                    on_delete=lambda _, c=card, idx=j: self.delete_answer(c, idx),
+                    icon_color=icon_color
+                )
                 ans_input.setPlaceholderText(T["placeholder_answer"].format(n=j + 1))
                 ans_input.textChanged.connect(lambda text, c=card, idx=j: c["back"].__setitem__(idx, text))
-                row_layout.addWidget(ans_input)
+                layout.addWidget(ans_input)
 
-                del_btn = QPushButton("×")
-                del_btn.setFixedWidth(36)
-                del_btn.clicked.connect(lambda _, c=card, idx=j: self.delete_answer(c, idx))
-                row_layout.addWidget(del_btn)
-
-                row.setLayout(row_layout)
-                layout.addWidget(row)
-
+            layout.addSpacing(8)
             add_ans_btn = QPushButton(T["add_answer"])
+            add_ans_btn.setObjectName("SecondaryButton")
             add_ans_btn.clicked.connect(lambda _, c=card: self.add_answer(c))
             layout.addWidget(add_ans_btn)
 
+            layout.addSpacing(4)
             delete_btn = QPushButton(T["delete_card"])
             delete_btn.clicked.connect(lambda _, c=card: self.delete_card(c))
             layout.addWidget(delete_btn)

@@ -142,9 +142,9 @@ TRANSLATIONS = {
         "new_deck_name": "New deck",
         "unsaved_warning_title": "Unsaved changes",
         "unsaved_warning_text": "The deck has unsaved changes. Do you want to save before quitting?",
-        "unsaved_save": "Save",
-        "unsaved_discard": "Quit",
-        "unsaved_cancel": "Cancel",
+        "unsaved_save": "&Save",
+        "unsaved_discard": "&Quit",
+        "unsaved_cancel": "&Cancel",
     }
 }
 
@@ -445,25 +445,35 @@ class FlashcardApp(QMainWindow):
         self.dark_theme_action.setCheckable(True)
         self.dark_theme_action.setChecked(True)
         self.dark_theme_action.triggered.connect(self.toggle_theme)
+        self.dark_theme_action.setStatusTip("Ctrl+D")
         self.repeat_action = self.options_menu.addAction(T["menu_repeat"])
         self.repeat_action.setCheckable(True)
         self.repeat_action.setChecked(True)
+        self.repeat_action.setStatusTip("Ctrl+R")
         self.flip_cards_action = self.options_menu.addAction(T["menu_flip_cards"])
         self.flip_cards_action.setCheckable(True)
         self.flip_cards_action.setChecked(False)
+        self.flip_cards_action.setStatusTip("Ctrl+F")
 
         self.lang_menu = self.menu.addMenu(T["menu_language"])
         self.lang_nl_action = self.lang_menu.addAction("Nederlands")
         self.lang_nl_action.setCheckable(True)
         self.lang_nl_action.setChecked(True)
+        self.lang_nl_action.setStatusTip("Ctrl+1")
         self.lang_en_action = self.lang_menu.addAction("English")
         self.lang_en_action.setCheckable(True)
+        self.lang_en_action.setStatusTip("Ctrl+2")
         self.lang_nl_action.triggered.connect(lambda: self.set_language("nl"))
         self.lang_en_action.triggered.connect(lambda: self.set_language("en"))
 
         QShortcut(QKeySequence("Ctrl+N"), self).activated.connect(self.create_new_deck)
         QShortcut(QKeySequence("Ctrl+L"), self).activated.connect(self.load_deck_dialog)
         QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self.save_current_deck)
+        QShortcut(QKeySequence("Ctrl+D"), self).activated.connect(self.dark_theme_action.trigger)
+        QShortcut(QKeySequence("Ctrl+R"), self).activated.connect(self.repeat_action.trigger)
+        QShortcut(QKeySequence("Ctrl+F"), self).activated.connect(self.flip_cards_action.trigger)
+        QShortcut(QKeySequence("Ctrl+1"), self).activated.connect(lambda: self.set_language("nl"))
+        QShortcut(QKeySequence("Ctrl+2"), self).activated.connect(lambda: self.set_language("en"))
 
         # ===== LAYOUT =====
         main_layout = QVBoxLayout()

@@ -154,31 +154,31 @@ STYLESHEET_DARK = """
         padding: 8px;
     }
     QLabel#SlotLabelEmpty {
-        font-size: 18px;
+        font-size: 32px;
         padding: 10px;
         background-color: #1a1a1a;
         border-radius: 10px;
     }
     QLabel#SlotLabel {
-        font-size: 18px;
+        font-size: 32px;
         padding: 10px;
         background-color: #2a2a2a;
         border-radius: 10px;
     }
     QLabel#SlotLabelCorrect {
-        font-size: 18px;
+        font-size: 32px;
         padding: 10px;
         background-color: #14532d;
         border-radius: 10px;
     }
     QLabel#SlotLabelShown {
-        font-size: 18px;
+        font-size: 32px;
         padding: 10px;
         background-color: #2a2a2a;
         border-radius: 10px;
     }
     QLabel#SlotLabelWrong {
-        font-size: 18px;
+        font-size: 32px;
         padding: 10px;
         background-color: #7f1d1d;
         border-radius: 10px;
@@ -252,35 +252,35 @@ STYLESHEET_LIGHT = """
         color: #111;
     }
     QLabel#SlotLabelEmpty {
-        font-size: 18px;
+        font-size: 32px;
         padding: 10px;
         background-color: #e0e0e0;
         border-radius: 10px;
         color: #111;
     }
     QLabel#SlotLabel {
-        font-size: 18px;
+        font-size: 32px;
         padding: 10px;
         background-color: #e8e8e8;
         border-radius: 10px;
         color: #111;
     }
     QLabel#SlotLabelCorrect {
-        font-size: 18px;
+        font-size: 32px;
         padding: 10px;
         background-color: #bbf7d0;
         border-radius: 10px;
         color: #111;
     }
     QLabel#SlotLabelShown {
-        font-size: 18px;
+        font-size: 32px;
         padding: 10px;
         background-color: #e8e8e8;
         border-radius: 10px;
         color: #111;
     }
     QLabel#SlotLabelWrong {
-        font-size: 18px;
+        font-size: 32px;
         padding: 10px;
         background-color: #fecaca;
         border-radius: 10px;
@@ -670,19 +670,45 @@ class PracticeDialog(QDialog):
     def clear_slots(self):
         while self.slots_layout.count():
             item = self.slots_layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.setParent(None)
+            if item.widget():
+                item.widget().setParent(None)
+            elif item.layout():
+                inner = item.layout()
+                while inner.count():
+                    child = inner.takeAt(0)
+                    if child.widget():
+                        child.widget().setParent(None)
         self.slot_labels = []
 
     def build_slots(self, count):
         self.clear_slots()
+        labels = []
         for i in range(count):
             label = QLabel("")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             label.setObjectName("SlotLabel")
             self.slot_labels.append(label)
-            self.slots_layout.addWidget(label)
+            labels.append(label)
+
+        if count <= 3:
+            for label in labels:
+                self.slots_layout.addWidget(label)
+        else:
+            for i in range(0, count, 2):
+                row = QHBoxLayout()
+                row.setSpacing(12)
+                row.addWidget(labels[i])
+                if i + 1 < count:
+                    row.addWidget(labels[i + 1])
+                else:
+                    spacer = QWidget()
+                    spacer.setStyleSheet("background: transparent;")
+                    spacer.setSizePolicy(
+                        labels[i].sizePolicy().horizontalPolicy(),
+                        labels[i].sizePolicy().verticalPolicy()
+                    )
+                    row.addWidget(spacer)
+                self.slots_layout.addLayout(row)
 
     def load_card(self, card):
         self.current_card = card

@@ -675,6 +675,9 @@ class PracticeDialog(QDialog):
         self.card_complete = False
         self.queue = []
         self.card_scores = []
+        self.card_index = 0
+        self.total_cards = len(cards)
+        self.cards_done = 0
 
         self.setup_ui()
         self.start_session()
@@ -687,6 +690,14 @@ class PracticeDialog(QDialog):
         self.card_frame = QFrame()
         card_layout = QVBoxLayout()
         card_layout.setSpacing(14)
+
+        counter_row = QHBoxLayout()
+        counter_row.addStretch()
+        self.counter_label = QLabel("")
+        self.counter_label.setStyleSheet("font-size: 13px; color: #9ca3af; padding: 0px;")
+        self.counter_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        counter_row.addWidget(self.counter_label)
+        card_layout.addLayout(counter_row)
 
         self.front_label = QLabel("")
         self.front_label.setObjectName("FrontLabel")
@@ -728,6 +739,9 @@ class PracticeDialog(QDialog):
     def start_session(self):
         self.queue = list(self.cards)
         random.shuffle(self.queue)
+        self.card_index = 1
+        self.total_cards = len(self.cards)
+        self.cards_done = 0
         card = self.queue.pop(0)
         self.load_card(card)
 
@@ -782,6 +796,7 @@ class PracticeDialog(QDialog):
         self.answered_correctly = True
 
         self.front_label.setText(card["front"])
+        self.counter_label.setText(f"{self.cards_done + 1} / {self.total_cards}")
         self.build_slots(len(self.state["all_answers"]))
 
         self.answer_input.setDisabled(False)
@@ -866,16 +881,15 @@ class PracticeDialog(QDialog):
         self.next_button.style().polish(self.next_button)
 
     def next_card(self):
-        # score vastleggen als de kaart afgerond is
         if self.card_complete:
             total = len(self.state["all_answers"])
             self.card_scores.append((self.correct_this_card, total))
 
-            # alleen herhalen als NIET volledig correct beantwoord
-            if self.repeat_incorrect and self.correct_this_card < total:
+            if self.correct_this_card >= total:
+                self.cards_done += 1
+            elif self.repeat_incorrect:
                 self.queue.append(self.current_card)
         else:
-            # onafgemaakte kaart altijd herhalen als repeat_incorrect aan staat
             if self.repeat_incorrect:
                 self.queue.append(self.current_card)
 
@@ -883,6 +897,7 @@ class PracticeDialog(QDialog):
             self.show_deck_finished()
             return
 
+        self.card_index += 1
         card = self.queue.pop(0)
         self.load_card(card)
 
@@ -896,6 +911,7 @@ class PracticeDialog(QDialog):
         self.current_card = None
         self.state = None
         self.clear_slots()
+        self.counter_label.setText("")
         self.front_label.setText(score_text)
         self.answer_input.clear()
         self.answer_input.setDisabled(True)
@@ -933,6 +949,8 @@ class FlashcardDialog(QDialog):
         self.queue = []
         self.current_card = None
         self.showing_back = False
+        self.card_index = 0
+        self.total_cards = len(cards)
 
         self.setup_ui()
         self.start_session()
@@ -944,6 +962,14 @@ class FlashcardDialog(QDialog):
         self.card_frame = QFrame()
         card_layout = QVBoxLayout()
         card_layout.setSpacing(14)
+
+        counter_row = QHBoxLayout()
+        counter_row.addStretch()
+        self.counter_label = QLabel("")
+        self.counter_label.setStyleSheet("font-size: 13px; color: #9ca3af; padding: 0px;")
+        self.counter_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        counter_row.addWidget(self.counter_label)
+        card_layout.addLayout(counter_row)
 
         self.card_label = QLabel("")
         self.card_label.setObjectName("FrontLabel")
@@ -980,12 +1006,15 @@ class FlashcardDialog(QDialog):
     def start_session(self):
         self.queue = list(self.cards)
         random.shuffle(self.queue)
+        self.card_index = 1
+        self.total_cards = len(self.cards)
         self.load_card(self.queue.pop(0))
 
     def load_card(self, card):
         self.current_card = card
         self.showing_back = False
         self.card_label.setText(card["front"])
+        self.counter_label.setText(f"{self.card_index} / {self.total_cards}")
         self.flip_button.setDisabled(False)
         self.next_button.setDisabled(True)
         self.next_button.setObjectName("")
@@ -1008,9 +1037,11 @@ class FlashcardDialog(QDialog):
     def next_card(self):
         if not self.queue:
             self.card_label.setText(T["deck_finished"])
+            self.counter_label.setText("")
             self.flip_button.setDisabled(True)
             self.next_button.setDisabled(True)
             return
+        self.card_index += 1
         self.load_card(self.queue.pop(0))
 
     def keyPressEvent(self, event):

@@ -619,13 +619,45 @@ class FlashcardApp(QMainWindow):
         self._update_title()
         self.update_ui_for_unsaved_deck()
 
+    def _confirm_discard(self) -> bool:
+        """
+        Toont een waarschuwing als er niet-opgeslagen wijzigingen zijn.
+        Geeft True terug als doorgaan veilig is (opgeslagen of bewust genegeerd),
+        False als de gebruiker heeft geannuleerd.
+        """
+        if not (self._dirty and self.current_deck):
+            return True
+
+        from PySide6.QtWidgets import QMessageBox
+        msg = QMessageBox(self)
+        msg.setWindowTitle(T["unsaved_warning_title"])
+        msg.setText(T["unsaved_warning_text"])
+        save_btn = msg.addButton(T["unsaved_save"], QMessageBox.ButtonRole.AcceptRole)
+        discard_btn = msg.addButton(T["unsaved_discard"], QMessageBox.ButtonRole.DestructiveRole)
+        cancel_btn = msg.addButton(T["unsaved_cancel"], QMessageBox.ButtonRole.RejectRole)
+        msg.setDefaultButton(cancel_btn)
+        msg.exec()
+        clicked = msg.clickedButton()
+        if clicked == save_btn:
+            self.save_current_deck()
+            return True
+        elif clicked == discard_btn:
+            return True
+        else:
+            return False
+
     def create_new_deck(self):
+        if not self._confirm_discard():
+            return
         deck = {"name": T["new_deck_name"], "cards": []}
         self.set_active_deck(deck)
 
     def save_current_deck(self):
         if not self.current_deck:
             return
+
+        # Bewuste keuze: een leeg deck (0 kaarten) mag worden opgeslagen.
+        # Gebruik case: deck aanmaken en later kaarten toevoegen.
 
         if not self.deck_path:
             filepath, _ = QFileDialog.getSaveFileName(
@@ -645,6 +677,9 @@ class FlashcardApp(QMainWindow):
         self.statusBar().showMessage(T["deck_saved"].format(name=name), 3000)
 
     def load_deck_dialog(self):
+        if not self._confirm_discard():
+            return
+
         filepath, _ = QFileDialog.getOpenFileName(
             self, T["load_dialog"], "", "Deck files (*.json)"
         )
@@ -729,26 +764,10 @@ class FlashcardApp(QMainWindow):
 
     def closeEvent(self, event):
         self._save_settings()
-        if self._dirty and self.current_deck:
-            from PySide6.QtWidgets import QMessageBox
-            msg = QMessageBox(self)
-            msg.setWindowTitle(T["unsaved_warning_title"])
-            msg.setText(T["unsaved_warning_text"])
-            save_btn = msg.addButton(T["unsaved_save"], QMessageBox.ButtonRole.AcceptRole)
-            discard_btn = msg.addButton(T["unsaved_discard"], QMessageBox.ButtonRole.DestructiveRole)
-            cancel_btn = msg.addButton(T["unsaved_cancel"], QMessageBox.ButtonRole.RejectRole)
-            msg.setDefaultButton(cancel_btn)
-            msg.exec()
-            clicked = msg.clickedButton()
-            if clicked == save_btn:
-                self.save_current_deck()
-                event.accept()
-            elif clicked == discard_btn:
-                event.accept()
-            else:
-                event.ignore()
-        else:
+        if self._confirm_discard():
             event.accept()
+        else:
+            event.ignore()
 
     def _get_cards_for_session(self) -> list:
         """Geeft de kaarten terug, eventueel omgedraaid."""

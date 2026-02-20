@@ -91,7 +91,7 @@ TRANSLATIONS = {
         "load_dialog": "Deck laden",
         "deck_saved": "Deck opgeslagen: {name}",
         "deck_loaded": "Deck geladen: {name}",
-        "load_error": "Fout bij laden: {error}",
+        "load_error": "Fout bij laden",
         "new_deck_name": "Nieuw deck",
         "unsaved_warning_title": "Niet opgeslagen wijzigingen",
         "unsaved_warning_text": "Het deck heeft niet-opgeslagen wijzigingen. Wil je opslaan voordat je afsluit?",
@@ -138,7 +138,7 @@ TRANSLATIONS = {
         "load_dialog": "Load deck",
         "deck_saved": "Deck saved: {name}",
         "deck_loaded": "Deck loaded: {name}",
-        "load_error": "Error loading: {error}",
+        "load_error": "Error loading",
         "new_deck_name": "New deck",
         "unsaved_warning_title": "Unsaved changes",
         "unsaved_warning_text": "The deck has unsaved changes. Do you want to save before quitting?",
@@ -654,7 +654,8 @@ class FlashcardApp(QMainWindow):
         try:
             deck = load_deck(filepath)
         except Exception as e:
-            self.deck_label.setText(T["load_error"].format(error=e))
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.critical(self, T["load_error"], str(e))
             return
 
         self.deck_path = filepath

@@ -72,7 +72,7 @@ TRANSLATIONS = {
         "stop": "Stoppen",
         "flip": "Draaien",
         "deck_finished": "Deck doorgewerkt!",
-        "score_text": "Deck doorgewerkt!  {score:.1f} / 10",
+        "score_text": "Deck doorgewerkt!  {score:.0f}% correct",
         "window_practice": "Invullen",
         "window_flashcard": "Oefenen",
         "window_edit": "Kaarten bewerken",
@@ -119,7 +119,7 @@ TRANSLATIONS = {
         "stop": "Stop",
         "flip": "Flip",
         "deck_finished": "Deck completed!",
-        "score_text": "Deck completed!  {score:.1f} / 10",
+        "score_text": "Deck completed!  {score:.0f}% correct",
         "window_practice": "Test yourself",
         "window_flashcard": "Study",
         "window_edit": "Edit cards",
@@ -790,6 +790,7 @@ class PracticeDialog(QDialog):
         # Kaartframe
         self.card_frame = QFrame()
         card_layout = QVBoxLayout()
+        self.card_layout = card_layout
         card_layout.setSpacing(14)
 
         counter_row = QHBoxLayout()
@@ -800,10 +801,12 @@ class PracticeDialog(QDialog):
         counter_row.addWidget(self.counter_label)
         card_layout.addLayout(counter_row)
 
+        card_layout.addStretch()
         self.front_label = QLabel("")
         self.front_label.setObjectName("FrontLabel")
         self.front_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(self.front_label)
+        card_layout.addStretch()
 
         self.slots_layout = QVBoxLayout()
         card_layout.addLayout(self.slots_layout)
@@ -1005,7 +1008,7 @@ class PracticeDialog(QDialog):
 
     def show_deck_finished(self):
         if self.card_scores:
-            score = sum(c / t for c, t in self.card_scores) / len(self.card_scores) * 10
+            score = sum(c / t for c, t in self.card_scores) / len(self.card_scores) * 100
             score_text = T["score_text"].format(score=score)
         else:
             score_text = T["deck_finished"]

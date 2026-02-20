@@ -251,7 +251,11 @@ class FlashcardApp(QMainWindow):
 
         left_layout.addStretch()
 
-        self.practice_button = QPushButton("Oefenen")
+        self.flashcard_button = QPushButton("Oefenen")
+        self.flashcard_button.clicked.connect(self.start_flashcard)
+        right_layout.addWidget(self.flashcard_button)
+
+        self.practice_button = QPushButton("Invullen")
         self.practice_button.clicked.connect(self.start_practice)
         right_layout.addWidget(self.practice_button)
 
@@ -275,18 +279,21 @@ class FlashcardApp(QMainWindow):
     def update_ui_for_no_deck(self):
         self.deck_label.setText("Geen deck geladen.")
         self.practice_button.setDisabled(True)
+        self.flashcard_button.setDisabled(True)
         self.add_card_button.setDisabled(True)
         self.edit_cards_button.setDisabled(True)
         self.save_action.setEnabled(False)
 
     def update_ui_for_unsaved_deck(self):
         self.practice_button.setDisabled(True)
+        self.flashcard_button.setDisabled(True)
         self.add_card_button.setDisabled(False)
         self.edit_cards_button.setDisabled(False)
         self.save_action.setEnabled(True)
 
     def update_ui_for_saved_deck(self):
         self.practice_button.setDisabled(False)
+        self.flashcard_button.setDisabled(False)
         self.add_card_button.setDisabled(False)
         self.edit_cards_button.setDisabled(False)
         self.save_action.setEnabled(True)
@@ -357,6 +364,13 @@ class FlashcardApp(QMainWindow):
         dialog = EditCardsDialog(self.current_deck["cards"], self)
         dialog.exec()
         self.cards = self.current_deck["cards"]
+
+    def start_flashcard(self):
+        if not self.cards:
+            return
+        stylesheet = STYLESHEET_DARK if self.dark_theme_action.isChecked() else STYLESHEET_LIGHT
+        dialog = FlashcardDialog(self.cards, stylesheet, self)
+        dialog.exec()
 
     def start_practice(self):
         if not self.cards:
@@ -605,6 +619,110 @@ class PracticeDialog(QDialog):
                 return
 
         super().keyPressEvent(event)
+
+
+# ===== FLASHCARD DIALOG =====
+
+class FlashcardDialog(QDialog):
+    def __init__(self, cards: list, stylesheet: str = STYLESHEET_DARK, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Oefenen")
+        self.resize(900, 600)
+        self.setStyleSheet(stylesheet)
+
+        self.cards = cards
+        self.queue = []
+        self.current_card = None
+        self.showing_back = False
+
+        self.setup_ui()
+        self.start_session()
+
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        layout.setSpacing(20)
+
+        self.card_frame = QFrame()
+        card_layout = QVBoxLayout()
+        card_layout.setSpacing(14)
+
+        self.card_label = QLabel("")
+        self.card_label.setObjectName("FrontLabel")
+        self.card_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.card_label.setWordWrap(True)
+        card_layout.addWidget(self.card_label)
+
+        self.card_frame.setLayout(card_layout)
+        layout.addWidget(self.card_frame)
+
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
+
+        self.flip_button = QPushButton("Draaien")
+        self.flip_button.clicked.connect(self.flip_card)
+        self.flip_button.setObjectName("PrimaryButton")
+        self.flip_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        btn_layout.addWidget(self.flip_button)
+
+        self.next_button = QPushButton("Volgende kaart")
+        self.next_button.clicked.connect(self.next_card)
+        self.next_button.setDisabled(True)
+        self.next_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        btn_layout.addWidget(self.next_button)
+
+        self.stop_button = QPushButton("Stoppen")
+        self.stop_button.clicked.connect(self.reject)
+        self.stop_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        btn_layout.addWidget(self.stop_button)
+
+        layout.addLayout(btn_layout)
+        self.setLayout(layout)
+
+    def start_session(self):
+        self.queue = list(self.cards)
+        random.shuffle(self.queue)
+        self.load_card(self.queue.pop(0))
+
+    def load_card(self, card):
+        self.current_card = card
+        self.showing_back = False
+        self.card_label.setText(card["front"])
+        self.flip_button.setDisabled(False)
+        self.next_button.setDisabled(True)
+        self.next_button.setObjectName("")
+        self.next_button.style().unpolish(self.next_button)
+        self.next_button.style().polish(self.next_button)
+
+    def flip_card(self):
+        if not self.current_card:
+            return
+        if not self.showing_back:
+            back_text = ",  ".join(self.current_card["back"])
+            self.card_label.setText(back_text)
+            self.showing_back = True
+            self.flip_button.setDisabled(True)
+            self.next_button.setDisabled(False)
+            self.next_button.setObjectName("ReadyButton")
+            self.next_button.style().unpolish(self.next_button)
+            self.next_button.style().polish(self.next_button)
+
+    def next_card(self):
+        if not self.queue:
+            self.card_label.setText("Deck doorgewerkt!")
+            self.flip_button.setDisabled(True)
+            self.next_button.setDisabled(True)
+            return
+        self.load_card(self.queue.pop(0))
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Space:
+            if not self.showing_back:
+                self.flip_card()
+            else:
+                self.next_card()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
 
 
 # ===== EDIT CARDS DIALOG =====

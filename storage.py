@@ -4,12 +4,17 @@ from pathlib import Path
 
 def save_deck(deck: dict, filepath: str):
     """
-    Slaat een deck op als JSON.
+    Slaat een deck atomisch op als JSON.
+    Schrijft eerst naar een tijdelijk bestand, dan pas replace() naar de echte locatie.
+    Zo raakt de JSON nooit corrupt bij een crash tijdens schrijven.
     """
     path = Path(filepath)
+    tmp = path.with_suffix(".tmp")
 
-    with path.open("w", encoding="utf-8") as f:
+    with tmp.open("w", encoding="utf-8") as f:
         json.dump(deck, f, ensure_ascii=False, indent=2)
+
+    tmp.replace(path)
 
 
 def load_deck(filepath: str) -> dict:

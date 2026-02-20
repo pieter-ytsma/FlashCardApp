@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt
 from helpers import start_card, check_answer
 
 
-STYLESHEET = """
+STYLESHEET_DARK = """
     QWidget {
         background-color: #121212;
         color: white;
@@ -62,9 +62,11 @@ STYLESHEET = """
         background-color: #2d2d2d;
         border: none;
         font-size: 16px;
+        color: white;
     }
     QPushButton {
         background-color: #2d2d2d;
+        color: white;
         border: none;
         padding: 12px;
         border-radius: 10px;
@@ -90,6 +92,98 @@ STYLESHEET = """
         background-color: #15803d;
     }
 """
+
+STYLESHEET_LIGHT = """
+    QWidget {
+        background-color: #f5f5f5;
+        color: #111;
+        font-family: Segoe UI;
+    }
+    QFrame {
+        background-color: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+    }
+    QLabel#FrontLabel {
+        font-size: 32px;
+        padding: 8px;
+        color: #111;
+    }
+    QLabel#SlotLabelEmpty {
+        font-size: 18px;
+        padding: 10px;
+        background-color: #e0e0e0;
+        border-radius: 10px;
+        color: #111;
+    }
+    QLabel#SlotLabel {
+        font-size: 18px;
+        padding: 10px;
+        background-color: #e8e8e8;
+        border-radius: 10px;
+        color: #111;
+    }
+    QLabel#SlotLabelCorrect {
+        font-size: 18px;
+        padding: 10px;
+        background-color: #bbf7d0;
+        border-radius: 10px;
+        color: #111;
+    }
+    QLabel#SlotLabelShown {
+        font-size: 18px;
+        padding: 10px;
+        background-color: #e8e8e8;
+        border-radius: 10px;
+        color: #111;
+    }
+    QLabel#SlotLabelWrong {
+        font-size: 18px;
+        padding: 10px;
+        background-color: #fecaca;
+        border-radius: 10px;
+        color: #111;
+    }
+    QLineEdit {
+        padding: 12px;
+        border-radius: 10px;
+        background-color: #ffffff;
+        border: 1px solid #ccc;
+        font-size: 16px;
+        color: #111;
+    }
+    QPushButton {
+        background-color: #e8e8e8;
+        color: #111;
+        border: none;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 15px;
+    }
+    QPushButton:hover {
+        background-color: #d0d0d0;
+    }
+    QPushButton:disabled {
+        background-color: #f0f0f0;
+        color: #aaa;
+    }
+    QPushButton#PrimaryButton {
+        background-color: #2563eb;
+        color: white;
+    }
+    QPushButton#PrimaryButton:hover {
+        background-color: #1d4ed8;
+    }
+    QPushButton#ReadyButton {
+        background-color: #16a34a;
+        color: white;
+    }
+    QPushButton#ReadyButton:hover {
+        background-color: #15803d;
+    }
+"""
+
+STYLESHEET = STYLESHEET_DARK
 
 MAX_SLOTS = 6
 
@@ -124,6 +218,10 @@ class FlashcardApp(QMainWindow):
         self.save_action.triggered.connect(self.save_current_deck)
 
         self.options_menu = self.menu.addMenu("Opties")
+        self.dark_theme_action = self.options_menu.addAction("Donker thema")
+        self.dark_theme_action.setCheckable(True)
+        self.dark_theme_action.setChecked(True)
+        self.dark_theme_action.triggered.connect(self.toggle_theme)
         self.repeat_action = self.options_menu.addAction("Fout beantwoorde kaarten herhalen")
         self.repeat_action.setCheckable(True)
         self.repeat_action.setChecked(True)
@@ -167,6 +265,12 @@ class FlashcardApp(QMainWindow):
         central = QWidget()
         central.setLayout(main_layout)
         self.setCentralWidget(central)
+
+    def toggle_theme(self):
+        if self.dark_theme_action.isChecked():
+            self.setStyleSheet(STYLESHEET_DARK)
+        else:
+            self.setStyleSheet(STYLESHEET_LIGHT)
 
     def update_ui_for_no_deck(self):
         self.deck_label.setText("Geen deck geladen.")
@@ -258,18 +362,19 @@ class FlashcardApp(QMainWindow):
         if not self.cards:
             return
         repeat_incorrect = self.repeat_action.isChecked()
-        dialog = PracticeDialog(self.cards, repeat_incorrect, self)
+        stylesheet = STYLESHEET_DARK if self.dark_theme_action.isChecked() else STYLESHEET_LIGHT
+        dialog = PracticeDialog(self.cards, repeat_incorrect, stylesheet, self)
         dialog.exec()
 
 
 # ===== PRACTICE DIALOG =====
 
 class PracticeDialog(QDialog):
-    def __init__(self, cards: list, repeat_incorrect: bool = True, parent=None):
+    def __init__(self, cards: list, repeat_incorrect: bool = True, stylesheet: str = STYLESHEET_DARK, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Oefenen")
         self.resize(900, 600)
-        self.setStyleSheet(STYLESHEET)
+        self.setStyleSheet(stylesheet)
 
         self.cards = cards
         self.repeat_incorrect = repeat_incorrect

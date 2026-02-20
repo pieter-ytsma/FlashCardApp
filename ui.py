@@ -77,7 +77,8 @@ TRANSLATIONS = {
         "window_flashcard": "Oefenen",
         "window_edit": "Kaarten bewerken",
         "window_add": "Kaart toevoegen",
-        "close": "Sluiten",
+        "save_close": "Opslaan",
+        "close": "Sluiten zonder opslaan",
         "card_number": "Kaart {n}",
         "front": "Voorkant",
         "answers": "Antwoorden",
@@ -118,7 +119,8 @@ TRANSLATIONS = {
         "window_flashcard": "Study",
         "window_edit": "Edit cards",
         "window_add": "Add card",
-        "close": "Close",
+        "save_close": "Save",
+        "close": "Close without saving",
         "card_number": "Card {n}",
         "front": "Front",
         "answers": "Answers",
@@ -968,6 +970,11 @@ class EditCardsDialog(QDialog):
         self.cards = cards
         self.setWindowTitle(T["window_edit"])
         self.resize(600, 500)
+        # Sla originele staat op voor discard
+        import copy
+        self._original_cards = copy.deepcopy(cards)
+        # { card_id -> {"front": QLineEdit, "answers": [DeletableLineEdit], "add_btn": QPushButton, "answers_layout": QVBoxLayout } }
+        self.card_fields = {}
 
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
@@ -982,19 +989,55 @@ class EditCardsDialog(QDialog):
         scroll.setWidget(self.scroll_widget)
         self.main_layout.addWidget(scroll)
 
-        close_btn = QPushButton(T["close"])
-        close_btn.clicked.connect(self.accept)
-        self.main_layout.addWidget(close_btn)
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(12)
+
+        save_btn = QPushButton(T["save_close"])
+        save_btn.setObjectName("PrimaryButton")
+        save_btn.clicked.connect(self.accept)
+        btn_row.addWidget(save_btn)
+
+        discard_btn = QPushButton(T["close"])
+        discard_btn.clicked.connect(self.discard_and_close)
+        btn_row.addWidget(discard_btn)
+
+        self.main_layout.addLayout(btn_row)
 
         self.build_card_list()
+
+    def _icon_color(self):
+        p = self.parent()
+        if p and hasattr(p, "dark_theme_action"):
+            return "white" if p.dark_theme_action.isChecked() else "#111"
+        return "white"
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            for card_id, fields in self.card_fields.items():
+                all_fields = [fields["front"]] + fields["answers"]
+                for i, field in enumerate(all_fields):
+                    if field.hasFocus():
+                        next_idx = i + 1
+                        if next_idx < len(all_fields):
+                            all_fields[next_idx].setFocus()
+                        elif len(fields["answers"]) < 6:
+                            self._add_answer_field(card_id)
+                            fields["answers"][-1].setFocus()
+                        event.accept()
+                        return
+            event.accept()
+        else:
+            super().keyPressEvent(event)
 
     def build_card_list(self):
         while self.cards_layout.count():
             item = self.cards_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+        self.card_fields = {}
 
         for i, card in enumerate(self.cards):
+            card_id = id(card)
             frame = QFrame()
             layout = QVBoxLayout()
             layout.setSpacing(4)
@@ -1020,21 +1063,27 @@ class EditCardsDialog(QDialog):
             layout.addWidget(back_label)
             layout.addSpacing(4)
 
+            answers_layout = QVBoxLayout()
+            answers_layout.setSpacing(4)
+            layout.addLayout(answers_layout)
+
+            answer_fields = []
             for j, ans in enumerate(card["back"]):
-                icon_color = "white" if self.parent() and self.parent().dark_theme_action.isChecked() else "#111"
                 ans_input = DeletableLineEdit(
                     ans,
                     on_delete=lambda _, c=card, idx=j: self.delete_answer(c, idx),
-                    icon_color=icon_color
+                    icon_color=self._icon_color()
                 )
                 ans_input.setPlaceholderText(T["placeholder_answer"].format(n=j + 1))
                 ans_input.textChanged.connect(lambda text, c=card, idx=j: c["back"].__setitem__(idx, text))
-                layout.addWidget(ans_input)
+                answers_layout.addWidget(ans_input)
+                answer_fields.append(ans_input)
 
             layout.addSpacing(8)
             add_ans_btn = QPushButton(T["add_answer"])
             add_ans_btn.setObjectName("SecondaryButton")
-            add_ans_btn.clicked.connect(lambda _, c=card: self.add_answer(c))
+            add_ans_btn.clicked.connect(lambda _, cid=card_id: self._add_answer_field(cid))
+            add_ans_btn.setDisabled(len(answer_fields) >= 6)
             layout.addWidget(add_ans_btn)
 
             layout.addSpacing(4)
@@ -1045,7 +1094,33 @@ class EditCardsDialog(QDialog):
             frame.setLayout(layout)
             self.cards_layout.addWidget(frame)
 
+            self.card_fields[card_id] = {
+                "card": card,
+                "front": front_input,
+                "answers": answer_fields,
+                "answers_layout": answers_layout,
+                "add_btn": add_ans_btn,
+            }
+
         self.cards_layout.addStretch()
+
+    def _add_answer_field(self, card_id):
+        fields = self.card_fields[card_id]
+        card = fields["card"]
+        if len(fields["answers"]) >= 6:
+            return
+        card["back"].append("")
+        j = len(fields["answers"])
+        ans_input = DeletableLineEdit(
+            "",
+            on_delete=lambda _, c=card, idx=j: self.delete_answer(c, idx),
+            icon_color=self._icon_color()
+        )
+        ans_input.setPlaceholderText(T["placeholder_answer"].format(n=j + 1))
+        ans_input.textChanged.connect(lambda text, c=card, idx=j: c["back"].__setitem__(idx, text))
+        fields["answers_layout"].addWidget(ans_input)
+        fields["answers"].append(ans_input)
+        fields["add_btn"].setDisabled(len(fields["answers"]) >= 6)
 
     def delete_card(self, card):
         self.cards.remove(card)
@@ -1059,6 +1134,12 @@ class EditCardsDialog(QDialog):
         if len(card["back"]) > 1:
             card["back"].pop(idx)
             self.build_card_list()
+
+    def discard_and_close(self):
+        # Herstel originele kaartdata
+        self.cards.clear()
+        self.cards.extend(self._original_cards)
+        self.reject()
 
 
 # ===== ADD CARD DIALOG =====
@@ -1109,18 +1190,23 @@ class AddCardDialog(QDialog):
         outer.addWidget(self.frame)
         outer.addSpacing(12)
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok |
-            QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        # Ok-knop niet via Enter activeerbaar
-        ok_btn = buttons.button(QDialogButtonBox.StandardButton.Ok)
-        if ok_btn:
-            ok_btn.setAutoDefault(False)
-            ok_btn.setDefault(False)
-        outer.addWidget(buttons)
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(12)
+
+        save_btn = QPushButton(T["save_close"])
+        save_btn.setObjectName("PrimaryButton")
+        save_btn.setAutoDefault(False)
+        save_btn.setDefault(False)
+        save_btn.clicked.connect(self.accept)
+        btn_row.addWidget(save_btn)
+
+        discard_btn = QPushButton(T["close"])
+        discard_btn.setAutoDefault(False)
+        discard_btn.setDefault(False)
+        discard_btn.clicked.connect(self.reject)
+        btn_row.addWidget(discard_btn)
+
+        outer.addLayout(btn_row)
 
         self.setLayout(outer)
 

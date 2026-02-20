@@ -482,10 +482,7 @@ class FlashcardApp(QMainWindow):
         # Update deck label
         if not self.current_deck:
             self.deck_label.setText(T["no_deck"])
-        elif self.deck_path:
-            self.deck_label.setText(T["deck_loaded"].format(name=Path(self.deck_path).stem))
-        else:
-            self.deck_label.setText(f"Deck: {self.current_deck['name']}")
+        self._update_title()
 
     def toggle_theme(self):
         if self.dark_theme_action.isChecked():
@@ -495,6 +492,7 @@ class FlashcardApp(QMainWindow):
 
     def update_ui_for_no_deck(self):
         self.deck_label.setText(T["no_deck"])
+        self.setWindowTitle("Flashcard App")
         self.practice_button.setDisabled(True)
         self.flashcard_button.setDisabled(True)
         self.add_card_button.setDisabled(True)
@@ -515,12 +513,20 @@ class FlashcardApp(QMainWindow):
         self.edit_cards_button.setDisabled(False)
         self.save_action.setEnabled(True)
 
+    def _update_title(self):
+        if self.current_deck:
+            name = Path(self.deck_path).stem if self.deck_path else self.current_deck["name"]
+            dirty = " *" if self._dirty else ""
+            self.setWindowTitle(f"Flashcard App - {name}{dirty}")
+        else:
+            self.setWindowTitle("Flashcard App")
+
     def set_active_deck(self, deck: dict):
         self.current_deck = deck
         self.cards = deck["cards"]
         self.deck_path = None
         self._dirty = True
-        self.deck_label.setText(f"Deck: {deck['name']}")
+        self._update_title()
         self.update_ui_for_unsaved_deck()
 
     def create_new_deck(self):
@@ -544,7 +550,7 @@ class FlashcardApp(QMainWindow):
         save_deck(self.current_deck, self.deck_path)
         self._dirty = False
         self.update_ui_for_saved_deck()
-        self.deck_label.setText(T["deck_saved"].format(name=Path(self.deck_path).stem))
+        self._update_title()
 
     def load_deck_dialog(self):
         filepath, _ = QFileDialog.getOpenFileName(
@@ -563,7 +569,7 @@ class FlashcardApp(QMainWindow):
         self.current_deck = deck
         self.cards = deck["cards"]
         self._dirty = False
-        self.deck_label.setText(T["deck_loaded"].format(name=Path(filepath).stem))
+        self._update_title()
         self.update_ui_for_saved_deck()
 
     def add_card(self):
@@ -578,6 +584,7 @@ class FlashcardApp(QMainWindow):
             self.current_deck["cards"].append({"front": front, "back": back})
             self.cards = self.current_deck["cards"]
             self._dirty = True
+            self._update_title()
 
     def edit_cards(self):
         if not self.current_deck:
@@ -585,6 +592,7 @@ class FlashcardApp(QMainWindow):
         dialog = EditCardsDialog(self.current_deck["cards"], self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._dirty = True
+            self._update_title()
         self.cards = self.current_deck["cards"]
 
     def start_flashcard(self):

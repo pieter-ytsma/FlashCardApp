@@ -11,6 +11,91 @@ from PySide6.QtCore import Qt
 from helpers import start_card, check_answer
 
 
+TRANSLATIONS = {
+    "nl": {
+        "menu_deck": "Deck",
+        "menu_new_deck": "Nieuw deck",
+        "menu_load_deck": "Deck laden",
+        "menu_save_deck": "Deck opslaan",
+        "menu_options": "Opties",
+        "menu_dark_theme": "Donker thema",
+        "menu_repeat": "Fout beantwoorde kaarten herhalen",
+        "menu_language": "Taal",
+        "no_deck": "Geen deck geladen.",
+        "new_card": "Nieuwe kaart",
+        "edit_cards": "Kaarten bewerken",
+        "flashcard": "Oefenen",
+        "practice": "Invullen",
+        "show_answers": "Toon antwoorden",
+        "next_card": "Volgende kaart",
+        "stop": "Stoppen",
+        "flip": "Draaien",
+        "deck_finished": "Deck doorgewerkt!",
+        "score_text": "Deck doorgewerkt!  {score:.1f} / 10",
+        "window_practice": "Invullen",
+        "window_flashcard": "Oefenen",
+        "window_edit": "Kaarten bewerken",
+        "window_add": "Kaart toevoegen",
+        "close": "Sluiten",
+        "card_number": "Kaart {n}",
+        "front": "Voorkant",
+        "answers": "Antwoorden",
+        "add_answer": "+ Antwoord toevoegen",
+        "delete_card": "Kaart verwijderen",
+        "placeholder_front": "Voorkant",
+        "placeholder_answer": "Antwoord {n}",
+        "placeholder_input": "Typ een antwoord en druk Enter…",
+        "save_dialog": "Deck opslaan",
+        "load_dialog": "Deck laden",
+        "deck_saved": "Deck opgeslagen: {name}",
+        "deck_loaded": "Deck geladen: {name}",
+        "load_error": "Fout bij laden: {error}",
+        "new_deck_name": "Nieuw deck",
+    },
+    "en": {
+        "menu_deck": "Deck",
+        "menu_new_deck": "New deck",
+        "menu_load_deck": "Load deck",
+        "menu_save_deck": "Save deck",
+        "menu_options": "Options",
+        "menu_dark_theme": "Dark theme",
+        "menu_repeat": "Repeat incorrectly answered cards",
+        "menu_language": "Language",
+        "no_deck": "No deck loaded.",
+        "new_card": "New card",
+        "edit_cards": "Edit cards",
+        "flashcard": "Study",
+        "practice": "Test yourself",
+        "show_answers": "Show answers",
+        "next_card": "Next card",
+        "stop": "Stop",
+        "flip": "Flip",
+        "deck_finished": "Deck completed!",
+        "score_text": "Deck completed!  {score:.1f} / 10",
+        "window_practice": "Test yourself",
+        "window_flashcard": "Study",
+        "window_edit": "Edit cards",
+        "window_add": "Add card",
+        "close": "Close",
+        "card_number": "Card {n}",
+        "front": "Front",
+        "answers": "Answers",
+        "add_answer": "+ Add answer",
+        "delete_card": "Delete card",
+        "placeholder_front": "Front",
+        "placeholder_answer": "Answer {n}",
+        "placeholder_input": "Type an answer and press Enter…",
+        "save_dialog": "Save deck",
+        "load_dialog": "Load deck",
+        "deck_saved": "Deck saved: {name}",
+        "deck_loaded": "Deck loaded: {name}",
+        "load_error": "Error loading: {error}",
+        "new_deck_name": "New deck",
+    }
+}
+
+T = TRANSLATIONS["nl"]  # actieve taal
+
 STYLESHEET_DARK = """
     QWidget {
         background-color: #121212;
@@ -206,31 +291,40 @@ class FlashcardApp(QMainWindow):
 
         # ===== MENU =====
         self.menu = self.menuBar()
-        self.deck_menu = self.menu.addMenu("Deck")
+        self.deck_menu = self.menu.addMenu(T["menu_deck"])
 
-        self.new_action = self.deck_menu.addAction("Nieuw deck")
+        self.new_action = self.deck_menu.addAction(T["menu_new_deck"])
         self.new_action.triggered.connect(self.create_new_deck)
 
-        self.open_action = self.deck_menu.addAction("Deck laden")
+        self.open_action = self.deck_menu.addAction(T["menu_load_deck"])
         self.open_action.triggered.connect(self.load_deck_dialog)
 
-        self.save_action = self.deck_menu.addAction("Deck opslaan")
+        self.save_action = self.deck_menu.addAction(T["menu_save_deck"])
         self.save_action.triggered.connect(self.save_current_deck)
 
-        self.options_menu = self.menu.addMenu("Opties")
-        self.dark_theme_action = self.options_menu.addAction("Donker thema")
+        self.options_menu = self.menu.addMenu(T["menu_options"])
+        self.dark_theme_action = self.options_menu.addAction(T["menu_dark_theme"])
         self.dark_theme_action.setCheckable(True)
         self.dark_theme_action.setChecked(True)
         self.dark_theme_action.triggered.connect(self.toggle_theme)
-        self.repeat_action = self.options_menu.addAction("Fout beantwoorde kaarten herhalen")
+        self.repeat_action = self.options_menu.addAction(T["menu_repeat"])
         self.repeat_action.setCheckable(True)
         self.repeat_action.setChecked(True)
+
+        self.lang_menu = self.menu.addMenu(T["menu_language"])
+        self.lang_nl_action = self.lang_menu.addAction("Nederlands")
+        self.lang_nl_action.setCheckable(True)
+        self.lang_nl_action.setChecked(True)
+        self.lang_en_action = self.lang_menu.addAction("English")
+        self.lang_en_action.setCheckable(True)
+        self.lang_nl_action.triggered.connect(lambda: self.set_language("nl"))
+        self.lang_en_action.triggered.connect(lambda: self.set_language("en"))
 
         # ===== LAYOUT =====
         main_layout = QVBoxLayout()
         main_layout.setSpacing(20)
 
-        self.deck_label = QLabel("Geen deck geladen.")
+        self.deck_label = QLabel(T["no_deck"])
         self.deck_label.setObjectName("FrontLabel")
         self.deck_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(self.deck_label)
@@ -241,21 +335,21 @@ class FlashcardApp(QMainWindow):
         left_layout = QVBoxLayout()
         right_layout = QVBoxLayout()
 
-        self.add_card_button = QPushButton("Nieuwe kaart")
+        self.add_card_button = QPushButton(T["new_card"])
         self.add_card_button.clicked.connect(self.add_card)
         left_layout.addWidget(self.add_card_button)
 
-        self.edit_cards_button = QPushButton("Kaarten bewerken")
+        self.edit_cards_button = QPushButton(T["edit_cards"])
         self.edit_cards_button.clicked.connect(self.edit_cards)
         left_layout.addWidget(self.edit_cards_button)
 
         left_layout.addStretch()
 
-        self.flashcard_button = QPushButton("Oefenen")
+        self.flashcard_button = QPushButton(T["flashcard"])
         self.flashcard_button.clicked.connect(self.start_flashcard)
         right_layout.addWidget(self.flashcard_button)
 
-        self.practice_button = QPushButton("Invullen")
+        self.practice_button = QPushButton(T["practice"])
         self.practice_button.clicked.connect(self.start_practice)
         right_layout.addWidget(self.practice_button)
 
@@ -270,6 +364,36 @@ class FlashcardApp(QMainWindow):
         central.setLayout(main_layout)
         self.setCentralWidget(central)
 
+    def set_language(self, lang: str):
+        global T
+        T = TRANSLATIONS[lang]
+        self.lang_nl_action.setChecked(lang == "nl")
+        self.lang_en_action.setChecked(lang == "en")
+
+        # Update menu teksten
+        self.deck_menu.setTitle(T["menu_deck"])
+        self.new_action.setText(T["menu_new_deck"])
+        self.open_action.setText(T["menu_load_deck"])
+        self.save_action.setText(T["menu_save_deck"])
+        self.options_menu.setTitle(T["menu_options"])
+        self.dark_theme_action.setText(T["menu_dark_theme"])
+        self.repeat_action.setText(T["menu_repeat"])
+        self.lang_menu.setTitle(T["menu_language"])
+
+        # Update knoppen
+        self.add_card_button.setText(T["new_card"])
+        self.edit_cards_button.setText(T["edit_cards"])
+        self.flashcard_button.setText(T["flashcard"])
+        self.practice_button.setText(T["practice"])
+
+        # Update deck label
+        if not self.current_deck:
+            self.deck_label.setText(T["no_deck"])
+        elif self.deck_path:
+            self.deck_label.setText(T["deck_loaded"].format(name=Path(self.deck_path).stem))
+        else:
+            self.deck_label.setText(f"Deck: {self.current_deck['name']}")
+
     def toggle_theme(self):
         if self.dark_theme_action.isChecked():
             self.setStyleSheet(STYLESHEET_DARK)
@@ -277,7 +401,7 @@ class FlashcardApp(QMainWindow):
             self.setStyleSheet(STYLESHEET_LIGHT)
 
     def update_ui_for_no_deck(self):
-        self.deck_label.setText("Geen deck geladen.")
+        self.deck_label.setText(T["no_deck"])
         self.practice_button.setDisabled(True)
         self.flashcard_button.setDisabled(True)
         self.add_card_button.setDisabled(True)
@@ -306,7 +430,7 @@ class FlashcardApp(QMainWindow):
         self.update_ui_for_unsaved_deck()
 
     def create_new_deck(self):
-        deck = {"name": "Nieuw deck", "cards": []}
+        deck = {"name": T["new_deck_name"], "cards": []}
         self.set_active_deck(deck)
 
     def save_current_deck(self):
@@ -315,7 +439,7 @@ class FlashcardApp(QMainWindow):
 
         if not self.deck_path:
             filepath, _ = QFileDialog.getSaveFileName(
-                self, "Deck opslaan", "", "Deck files (*.json)"
+                self, T["save_dialog"], "", "Deck files (*.json)"
             )
             if not filepath:
                 return
@@ -325,11 +449,11 @@ class FlashcardApp(QMainWindow):
 
         save_deck(self.current_deck, self.deck_path)
         self.update_ui_for_saved_deck()
-        self.deck_label.setText(f"Deck opgeslagen: {Path(self.deck_path).stem}")
+        self.deck_label.setText(T["deck_saved"].format(name=Path(self.deck_path).stem))
 
     def load_deck_dialog(self):
         filepath, _ = QFileDialog.getOpenFileName(
-            self, "Deck laden", "", "Deck files (*.json)"
+            self, T["load_dialog"], "", "Deck files (*.json)"
         )
         if not filepath:
             return
@@ -337,13 +461,13 @@ class FlashcardApp(QMainWindow):
         try:
             deck = load_deck(filepath)
         except Exception as e:
-            self.deck_label.setText(f"Fout bij laden: {e}")
+            self.deck_label.setText(T["load_error"].format(error=e))
             return
 
         self.deck_path = filepath
         self.current_deck = deck
         self.cards = deck["cards"]
-        self.deck_label.setText(f"Deck geladen: {Path(filepath).stem}")
+        self.deck_label.setText(T["deck_loaded"].format(name=Path(filepath).stem))
         self.update_ui_for_saved_deck()
 
     def add_card(self):
@@ -386,7 +510,7 @@ class FlashcardApp(QMainWindow):
 class PracticeDialog(QDialog):
     def __init__(self, cards: list, repeat_incorrect: bool = True, stylesheet: str = STYLESHEET_DARK, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Oefenen")
+        self.setWindowTitle(T["window_practice"])
         self.resize(900, 600)
         self.setStyleSheet(stylesheet)
 
@@ -424,7 +548,7 @@ class PracticeDialog(QDialog):
 
         # Invoer
         self.answer_input = QLineEdit()
-        self.answer_input.setPlaceholderText("Typ een antwoord en druk Enter…")
+        self.answer_input.setPlaceholderText(T["placeholder_input"])
         self.answer_input.returnPressed.connect(self.on_check_clicked)
         layout.addWidget(self.answer_input)
 
@@ -432,16 +556,16 @@ class PracticeDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
 
-        self.show_answers_button = QPushButton("Toon antwoorden")
+        self.show_answers_button = QPushButton(T["show_answers"])
         self.show_answers_button.clicked.connect(self.show_answers)
         btn_layout.addWidget(self.show_answers_button)
 
-        self.next_button = QPushButton("Volgende kaart")
+        self.next_button = QPushButton(T["next_card"])
         self.next_button.clicked.connect(self.next_card)
         self.next_button.setObjectName("PrimaryButton")
         btn_layout.addWidget(self.next_button)
 
-        self.stop_button = QPushButton("Stoppen")
+        self.stop_button = QPushButton(T["stop"])
         self.stop_button.clicked.connect(self.reject)
         btn_layout.addWidget(self.stop_button)
 
@@ -590,9 +714,9 @@ class PracticeDialog(QDialog):
     def show_deck_finished(self):
         if self.card_scores:
             score = sum(c / t for c, t in self.card_scores) / len(self.card_scores) * 10
-            score_text = f"Deck doorgewerkt!  {score:.1f} / 10"
+            score_text = T["score_text"].format(score=score)
         else:
-            score_text = "Deck doorgewerkt!"
+            score_text = T["deck_finished"]
 
         self.current_card = None
         self.state = None
@@ -626,7 +750,7 @@ class PracticeDialog(QDialog):
 class FlashcardDialog(QDialog):
     def __init__(self, cards: list, stylesheet: str = STYLESHEET_DARK, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Oefenen")
+        self.setWindowTitle(T["window_flashcard"])
         self.resize(900, 600)
         self.setStyleSheet(stylesheet)
 
@@ -658,19 +782,19 @@ class FlashcardDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
 
-        self.flip_button = QPushButton("Draaien")
+        self.flip_button = QPushButton(T["flip"])
         self.flip_button.clicked.connect(self.flip_card)
         self.flip_button.setObjectName("PrimaryButton")
         self.flip_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_layout.addWidget(self.flip_button)
 
-        self.next_button = QPushButton("Volgende kaart")
+        self.next_button = QPushButton(T["next_card"])
         self.next_button.clicked.connect(self.next_card)
         self.next_button.setDisabled(True)
         self.next_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_layout.addWidget(self.next_button)
 
-        self.stop_button = QPushButton("Stoppen")
+        self.stop_button = QPushButton(T["stop"])
         self.stop_button.clicked.connect(self.reject)
         self.stop_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_layout.addWidget(self.stop_button)
@@ -708,7 +832,7 @@ class FlashcardDialog(QDialog):
 
     def next_card(self):
         if not self.queue:
-            self.card_label.setText("Deck doorgewerkt!")
+            self.card_label.setText(T["deck_finished"])
             self.flip_button.setDisabled(True)
             self.next_button.setDisabled(True)
             return
@@ -731,7 +855,7 @@ class EditCardsDialog(QDialog):
     def __init__(self, cards: list, parent=None):
         super().__init__(parent)
         self.cards = cards
-        self.setWindowTitle("Kaarten bewerken")
+        self.setWindowTitle(T["window_edit"])
         self.resize(600, 500)
 
         self.main_layout = QVBoxLayout()
@@ -747,7 +871,7 @@ class EditCardsDialog(QDialog):
         scroll.setWidget(self.scroll_widget)
         self.main_layout.addWidget(scroll)
 
-        close_btn = QPushButton("Sluiten")
+        close_btn = QPushButton(T["close"])
         close_btn.clicked.connect(self.accept)
         self.main_layout.addWidget(close_btn)
 
@@ -764,11 +888,11 @@ class EditCardsDialog(QDialog):
             layout = QVBoxLayout()
             layout.setSpacing(6)
 
-            number_label = QLabel(f"Kaart {i + 1}")
+            number_label = QLabel(T["card_number"].format(n=i + 1))
             number_label.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
             layout.addWidget(number_label)
 
-            front_label = QLabel("Voorkant")
+            front_label = QLabel(T["front"])
             front_label.setStyleSheet("color: #888; font-size: 12px;")
             layout.addWidget(front_label)
 
@@ -776,7 +900,7 @@ class EditCardsDialog(QDialog):
             front_input.textChanged.connect(lambda text, c=card: c.update({"front": text}))
             layout.addWidget(front_input)
 
-            back_label = QLabel("Antwoorden")
+            back_label = QLabel(T["answers"])
             back_label.setStyleSheet("color: #888; font-size: 12px; margin-top: 6px;")
             layout.addWidget(back_label)
 
@@ -787,7 +911,7 @@ class EditCardsDialog(QDialog):
                 row_layout.setSpacing(6)
 
                 ans_input = QLineEdit(ans)
-                ans_input.setPlaceholderText(f"Antwoord {j+1}")
+                ans_input.setPlaceholderText(T["placeholder_answer"].format(n=j + 1))
                 ans_input.textChanged.connect(lambda text, c=card, idx=j: c["back"].__setitem__(idx, text))
                 row_layout.addWidget(ans_input)
 
@@ -799,11 +923,11 @@ class EditCardsDialog(QDialog):
                 row.setLayout(row_layout)
                 layout.addWidget(row)
 
-            add_ans_btn = QPushButton("+ Antwoord toevoegen")
+            add_ans_btn = QPushButton(T["add_answer"])
             add_ans_btn.clicked.connect(lambda _, c=card: self.add_answer(c))
             layout.addWidget(add_ans_btn)
 
-            delete_btn = QPushButton("Kaart verwijderen")
+            delete_btn = QPushButton(T["delete_card"])
             delete_btn.clicked.connect(lambda _, c=card: self.delete_card(c))
             layout.addWidget(delete_btn)
 
@@ -832,20 +956,20 @@ class AddCardDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setWindowTitle("Kaart toevoegen")
+        self.setWindowTitle(T["window_add"])
         self.resize(400, 400)
 
         layout = QVBoxLayout()
 
         self.front_input = QLineEdit()
-        self.front_input.setPlaceholderText("Voorkant")
+        self.front_input.setPlaceholderText(T["placeholder_front"])
         layout.addWidget(self.front_input)
 
         self.back_inputs = []
 
         for i in range(6):
             back = QLineEdit()
-            back.setPlaceholderText(f"Antwoord {i+1}")
+            back.setPlaceholderText(T["placeholder_answer"].format(n=i + 1))
             layout.addWidget(back)
             self.back_inputs.append(back)
 

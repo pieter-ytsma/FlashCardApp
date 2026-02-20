@@ -77,7 +77,7 @@ TRANSLATIONS = {
         "window_flashcard": "Oefenen",
         "window_edit": "Kaarten bewerken",
         "window_add": "Kaart toevoegen",
-        "save_close": "Opslaan",
+        "save_close": "Wijzigen",
         "close": "Sluiten zonder opslaan",
         "card_number": "Kaart {n}",
         "front": "Voorkant",
@@ -93,6 +93,11 @@ TRANSLATIONS = {
         "deck_loaded": "Deck geladen: {name}",
         "load_error": "Fout bij laden: {error}",
         "new_deck_name": "Nieuw deck",
+        "unsaved_warning_title": "Niet opgeslagen wijzigingen",
+        "unsaved_warning_text": "Het deck heeft niet-opgeslagen wijzigingen. Wil je opslaan voordat je afsluit?",
+        "unsaved_save": "Opslaan",
+        "unsaved_discard": "Afsluiten",
+        "unsaved_cancel": "Annuleren",
     },
     "en": {
         "menu_deck": "Deck",
@@ -119,7 +124,7 @@ TRANSLATIONS = {
         "window_flashcard": "Study",
         "window_edit": "Edit cards",
         "window_add": "Add card",
-        "save_close": "Save",
+        "save_close": "Confirm changes",
         "close": "Close without saving",
         "card_number": "Card {n}",
         "front": "Front",
@@ -135,6 +140,11 @@ TRANSLATIONS = {
         "deck_loaded": "Deck loaded: {name}",
         "load_error": "Error loading: {error}",
         "new_deck_name": "New deck",
+        "unsaved_warning_title": "Unsaved changes",
+        "unsaved_warning_text": "The deck has unsaved changes. Do you want to save before quitting?",
+        "unsaved_save": "Save",
+        "unsaved_discard": "Quit",
+        "unsaved_cancel": "Cancel",
     }
 }
 
@@ -354,6 +364,7 @@ class FlashcardApp(QMainWindow):
         self.current_deck = None
         self.cards = []
         self.deck_path = None
+        self._dirty = False
 
         self.setup_ui()
         self.update_ui_for_no_deck()
@@ -414,20 +425,24 @@ class FlashcardApp(QMainWindow):
 
         self.add_card_button = QPushButton(T["new_card"])
         self.add_card_button.clicked.connect(self.add_card)
+        self.add_card_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         left_layout.addWidget(self.add_card_button)
 
         self.edit_cards_button = QPushButton(T["edit_cards"])
         self.edit_cards_button.clicked.connect(self.edit_cards)
+        self.edit_cards_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         left_layout.addWidget(self.edit_cards_button)
 
         left_layout.addStretch()
 
         self.flashcard_button = QPushButton(T["flashcard"])
         self.flashcard_button.clicked.connect(self.start_flashcard)
+        self.flashcard_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         right_layout.addWidget(self.flashcard_button)
 
         self.practice_button = QPushButton(T["practice"])
         self.practice_button.clicked.connect(self.start_practice)
+        self.practice_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         right_layout.addWidget(self.practice_button)
 
         right_layout.addStretch()
@@ -504,6 +519,7 @@ class FlashcardApp(QMainWindow):
         self.current_deck = deck
         self.cards = deck["cards"]
         self.deck_path = None
+        self._dirty = True
         self.deck_label.setText(f"Deck: {deck['name']}")
         self.update_ui_for_unsaved_deck()
 
@@ -526,6 +542,7 @@ class FlashcardApp(QMainWindow):
             self.deck_path = filepath
 
         save_deck(self.current_deck, self.deck_path)
+        self._dirty = False
         self.update_ui_for_saved_deck()
         self.deck_label.setText(T["deck_saved"].format(name=Path(self.deck_path).stem))
 
@@ -545,6 +562,7 @@ class FlashcardApp(QMainWindow):
         self.deck_path = filepath
         self.current_deck = deck
         self.cards = deck["cards"]
+        self._dirty = False
         self.deck_label.setText(T["deck_loaded"].format(name=Path(filepath).stem))
         self.update_ui_for_saved_deck()
 
@@ -559,12 +577,14 @@ class FlashcardApp(QMainWindow):
                 return
             self.current_deck["cards"].append({"front": front, "back": back})
             self.cards = self.current_deck["cards"]
+            self._dirty = True
 
     def edit_cards(self):
         if not self.current_deck:
             return
         dialog = EditCardsDialog(self.current_deck["cards"], self)
-        dialog.exec()
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._dirty = True
         self.cards = self.current_deck["cards"]
 
     def start_flashcard(self):
@@ -583,6 +603,40 @@ class FlashcardApp(QMainWindow):
         cards = self._get_cards_for_session()
         dialog = PracticeDialog(cards, repeat_incorrect, stylesheet, self)
         dialog.exec()
+
+    def keyPressEvent(self, event):
+        if self.cards:
+            if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+                self.start_flashcard()
+                event.accept()
+                return
+            elif event.key() == Qt.Key.Key_Space:
+                self.start_practice()
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
+    def closeEvent(self, event):
+        if self._dirty and self.current_deck:
+            from PySide6.QtWidgets import QMessageBox
+            msg = QMessageBox(self)
+            msg.setWindowTitle(T["unsaved_warning_title"])
+            msg.setText(T["unsaved_warning_text"])
+            save_btn = msg.addButton(T["unsaved_save"], QMessageBox.ButtonRole.AcceptRole)
+            discard_btn = msg.addButton(T["unsaved_discard"], QMessageBox.ButtonRole.DestructiveRole)
+            cancel_btn = msg.addButton(T["unsaved_cancel"], QMessageBox.ButtonRole.RejectRole)
+            msg.setDefaultButton(cancel_btn)
+            msg.exec()
+            clicked = msg.clickedButton()
+            if clicked == save_btn:
+                self.save_current_deck()
+                event.accept()
+            elif clicked == discard_btn:
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.accept()
 
     def _get_cards_for_session(self) -> list:
         """Geeft de kaarten terug, eventueel omgedraaid."""

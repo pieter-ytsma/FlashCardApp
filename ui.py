@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 import random
 from pathlib import Path
 from storage import save_deck, load_deck
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QSettings
 from PySide6.QtGui import QFont
 from helpers import start_card, check_answer
 
@@ -377,6 +377,7 @@ class FlashcardApp(QMainWindow):
 
         self.setup_ui()
         self.update_ui_for_no_deck()
+        self._load_settings()
 
     def setup_ui(self):
         self.setWindowTitle("Flashcard App")
@@ -522,6 +523,27 @@ class FlashcardApp(QMainWindow):
         self.edit_cards_button.setDisabled(False)
         self.save_action.setEnabled(True)
 
+    def _save_settings(self):
+        s = QSettings("FlashcardApp", "FlashcardApp")
+        s.setValue("dark_theme", self.dark_theme_action.isChecked())
+        s.setValue("repeat_incorrect", self.repeat_action.isChecked())
+        s.setValue("flip_cards", self.flip_cards_action.isChecked())
+        lang = "nl" if self.lang_nl_action.isChecked() else "en"
+        s.setValue("language", lang)
+
+    def _load_settings(self):
+        s = QSettings("FlashcardApp", "FlashcardApp")
+        dark = s.value("dark_theme", True, type=bool)
+        repeat = s.value("repeat_incorrect", True, type=bool)
+        flip = s.value("flip_cards", False, type=bool)
+        lang = s.value("language", "nl", type=str)
+
+        self.dark_theme_action.setChecked(dark)
+        self.repeat_action.setChecked(repeat)
+        self.flip_cards_action.setChecked(flip)
+        self.toggle_theme()
+        self.set_language(lang)
+
     def _update_title(self):
         if self.current_deck:
             name = Path(self.deck_path).stem if self.deck_path else self.current_deck["name"]
@@ -636,6 +658,7 @@ class FlashcardApp(QMainWindow):
         super().keyPressEvent(event)
 
     def closeEvent(self, event):
+        self._save_settings()
         if self._dirty and self.current_deck:
             from PySide6.QtWidgets import QMessageBox
             msg = QMessageBox(self)

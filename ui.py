@@ -982,11 +982,13 @@ class FlashcardDialog(QDialog):
         counter_row.addWidget(self.counter_label)
         card_layout.addLayout(counter_row)
 
+        card_layout.addStretch()
         self.card_label = QLabel("")
         self.card_label.setObjectName("FrontLabel")
         self.card_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.card_label.setWordWrap(True)
         card_layout.addWidget(self.card_label)
+        card_layout.addStretch()
 
         self.card_frame.setLayout(card_layout)
         layout.addWidget(self.card_frame)

@@ -1020,6 +1020,9 @@ class PracticeDialog(QDialog):
         self.front_label.setText(score_text)
         self.answer_input.clear()
         self.answer_input.setDisabled(True)
+        self.next_button.setObjectName("PrimaryButton")
+        self.next_button.style().unpolish(self.next_button)
+        self.next_button.style().polish(self.next_button)
         self.next_button.setDisabled(True)
         self.show_answers_button.setDisabled(True)
 

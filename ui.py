@@ -60,6 +60,7 @@ TRANSLATIONS = {
         "menu_options": "Opties",
         "menu_dark_theme": "Donker thema",
         "menu_repeat": "Fout beantwoorde kaarten herhalen",
+        "menu_flip_cards": "Kaarten omdraaien",
         "menu_language": "Taal",
         "no_deck": "Geen deck geladen.",
         "new_card": "Nieuwe kaart",
@@ -100,6 +101,7 @@ TRANSLATIONS = {
         "menu_options": "Options",
         "menu_dark_theme": "Dark theme",
         "menu_repeat": "Repeat incorrectly answered cards",
+        "menu_flip_cards": "Flip cards",
         "menu_language": "Language",
         "no_deck": "No deck loaded.",
         "new_card": "New card",
@@ -380,6 +382,9 @@ class FlashcardApp(QMainWindow):
         self.repeat_action = self.options_menu.addAction(T["menu_repeat"])
         self.repeat_action.setCheckable(True)
         self.repeat_action.setChecked(True)
+        self.flip_cards_action = self.options_menu.addAction(T["menu_flip_cards"])
+        self.flip_cards_action.setCheckable(True)
+        self.flip_cards_action.setChecked(False)
 
         self.lang_menu = self.menu.addMenu(T["menu_language"])
         self.lang_nl_action = self.lang_menu.addAction("Nederlands")
@@ -448,6 +453,7 @@ class FlashcardApp(QMainWindow):
         self.options_menu.setTitle(T["menu_options"])
         self.dark_theme_action.setText(T["menu_dark_theme"])
         self.repeat_action.setText(T["menu_repeat"])
+        self.flip_cards_action.setText(T["menu_flip_cards"])
         self.lang_menu.setTitle(T["menu_language"])
 
         # Update knoppen
@@ -563,7 +569,8 @@ class FlashcardApp(QMainWindow):
         if not self.cards:
             return
         stylesheet = STYLESHEET_DARK if self.dark_theme_action.isChecked() else STYLESHEET_LIGHT
-        dialog = FlashcardDialog(self.cards, stylesheet, self)
+        cards = self._get_cards_for_session()
+        dialog = FlashcardDialog(cards, stylesheet, self)
         dialog.exec()
 
     def start_practice(self):
@@ -571,8 +578,20 @@ class FlashcardApp(QMainWindow):
             return
         repeat_incorrect = self.repeat_action.isChecked()
         stylesheet = STYLESHEET_DARK if self.dark_theme_action.isChecked() else STYLESHEET_LIGHT
-        dialog = PracticeDialog(self.cards, repeat_incorrect, stylesheet, self)
+        cards = self._get_cards_for_session()
+        dialog = PracticeDialog(cards, repeat_incorrect, stylesheet, self)
         dialog.exec()
+
+    def _get_cards_for_session(self) -> list:
+        """Geeft de kaarten terug, eventueel omgedraaid."""
+        if not self.flip_cards_action.isChecked():
+            return self.cards
+        flipped = []
+        for card in self.cards:
+            new_front = ", ".join(card["back"])
+            new_back = [card["front"]]
+            flipped.append({"front": new_front, "back": new_back})
+        return flipped
 
 
 # ===== PRACTICE DIALOG =====
@@ -658,15 +677,11 @@ class PracticeDialog(QDialog):
 
     def build_slots(self, count):
         self.clear_slots()
-        for i in range(MAX_SLOTS):
+        for i in range(count):
             label = QLabel("")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            if i < count:
-                label.setObjectName("SlotLabel")
-                self.slot_labels.append(label)
-            else:
-                label.setObjectName("SlotLabelEmpty")
-                label.setText("")
+            label.setObjectName("SlotLabel")
+            self.slot_labels.append(label)
             self.slots_layout.addWidget(label)
 
     def load_card(self, card):

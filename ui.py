@@ -1151,7 +1151,7 @@ class EditCardsDialog(QDialog):
             layout.setContentsMargins(16, 16, 16, 16)
 
             number_label = QLabel(T["card_number"].format(n=i + 1))
-            number_label.setStyleSheet("font-size: 18px; font-weight: 600; color: white;")
+            number_label.setStyleSheet("font-size: 18px; font-weight: 600;")
             layout.addWidget(number_label)
             layout.addSpacing(8)
 

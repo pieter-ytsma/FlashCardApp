@@ -62,7 +62,7 @@ TRANSLATIONS = {
         "menu_repeat": "Fout beantwoorde kaarten herhalen",
         "menu_flip_cards": "Kaarten omdraaien",
         "menu_language": "Taal",
-        "no_deck": "Geen deck geladen.",
+        "no_deck": "Geen deck geladen",
         "new_card": "Nieuwe kaart",
         "edit_cards": "Kaarten bewerken",
         "flashcard": "Oefenen",
@@ -109,7 +109,7 @@ TRANSLATIONS = {
         "menu_repeat": "Repeat incorrectly answered cards",
         "menu_flip_cards": "Flip cards",
         "menu_language": "Language",
-        "no_deck": "No deck loaded.",
+        "no_deck": "No deck loaded",
         "new_card": "New card",
         "edit_cards": "Edit cards",
         "flashcard": "Study",
@@ -163,6 +163,10 @@ STYLESHEET_DARK = """
     }
     QLabel#FrontLabel {
         font-size: 32px;
+        padding: 8px;
+    }
+    QLabel#DeckLabel {
+        font-size: 22px;
         padding: 8px;
     }
     QLabel#SlotLabelEmpty {
@@ -260,6 +264,11 @@ STYLESHEET_LIGHT = """
     }
     QLabel#FrontLabel {
         font-size: 32px;
+        padding: 8px;
+        color: #111;
+    }
+    QLabel#DeckLabel {
+        font-size: 22px;
         padding: 8px;
         color: #111;
     }
@@ -410,15 +419,15 @@ class FlashcardApp(QMainWindow):
 
         # ===== LAYOUT =====
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(20)
+        main_layout.setSpacing(16)
 
         self.deck_label = QLabel(T["no_deck"])
-        self.deck_label.setObjectName("FrontLabel")
+        self.deck_label.setObjectName("DeckLabel")
         self.deck_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(self.deck_label)
 
         bottom_layout = QHBoxLayout()
-        bottom_layout.setSpacing(20)
+        bottom_layout.setSpacing(16)
 
         left_layout = QVBoxLayout()
         right_layout = QVBoxLayout()
@@ -518,8 +527,10 @@ class FlashcardApp(QMainWindow):
             name = Path(self.deck_path).stem if self.deck_path else self.current_deck["name"]
             dirty = " *" if self._dirty else ""
             self.setWindowTitle(f"Flashcard App - {name}{dirty}")
+            self.deck_label.setText(name[:1].upper() + name[1:] if name else name)
         else:
             self.setWindowTitle("Flashcard App")
+            self.deck_label.setText(T["no_deck"])
 
     def set_active_deck(self, deck: dict):
         self.current_deck = deck

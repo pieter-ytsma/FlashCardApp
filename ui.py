@@ -8,7 +8,7 @@ import random
 from pathlib import Path
 from storage import save_deck, load_deck
 from PySide6.QtCore import Qt, QSize, QSettings
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QKeySequence, QShortcut
 from helpers import start_card, check_answer
 
 
@@ -53,15 +53,15 @@ class DeletableLineEdit(QLineEdit):
 
 TRANSLATIONS = {
     "nl": {
-        "menu_deck": "Deck",
+        "menu_deck": "&Deck",
         "menu_new_deck": "Nieuw deck",
         "menu_load_deck": "Deck laden",
         "menu_save_deck": "Deck opslaan",
-        "menu_options": "Opties",
+        "menu_options": "&Opties",
         "menu_dark_theme": "Donker thema",
         "menu_repeat": "Fout beantwoorde kaarten herhalen",
         "menu_flip_cards": "Kaarten omdraaien",
-        "menu_language": "Taal",
+        "menu_language": "&Taal",
         "no_deck": "Geen deck geladen",
         "new_card": "Nieuwe kaart",
         "edit_cards": "Kaarten bewerken",
@@ -100,15 +100,15 @@ TRANSLATIONS = {
         "unsaved_cancel": "Annuleren",
     },
     "en": {
-        "menu_deck": "Deck",
+        "menu_deck": "&Deck",
         "menu_new_deck": "New deck",
         "menu_load_deck": "Load deck",
         "menu_save_deck": "Save deck",
-        "menu_options": "Options",
+        "menu_options": "&Options",
         "menu_dark_theme": "Dark theme",
         "menu_repeat": "Repeat incorrectly answered cards",
         "menu_flip_cards": "Flip cards",
-        "menu_language": "Language",
+        "menu_language": "&Language",
         "no_deck": "No deck loaded",
         "new_card": "New card",
         "edit_cards": "Edit cards",
@@ -151,6 +151,25 @@ TRANSLATIONS = {
 T = TRANSLATIONS["nl"]  # actieve taal
 
 STYLESHEET_DARK = """
+
+    QMenuBar {
+        background-color: #121212;
+        color: white;
+    }
+    QMenuBar::item:selected {
+        background-color: #2d2d2d;
+    }
+    QMenu {
+        background-color: #1e1e1e;
+        color: white;
+        border: 1px solid #2a2a2a;
+    }
+    QMenu::item:selected {
+        background-color: #2563eb;
+    }
+    QMenu::item:disabled {
+        color: #555555;
+    }
     QWidget {
         background-color: #121212;
         color: white;
@@ -252,6 +271,26 @@ STYLESHEET_DARK = """
 """
 
 STYLESHEET_LIGHT = """
+
+    QMenuBar {
+        background-color: #f5f5f5;
+        color: #111;
+    }
+    QMenuBar::item:selected {
+        background-color: #d0d0d0;
+    }
+    QMenu {
+        background-color: #ffffff;
+        color: #111;
+        border: 1px solid #ccc;
+    }
+    QMenu::item:selected {
+        background-color: #2563eb;
+        color: white;
+    }
+    QMenu::item:disabled {
+        color: #aaaaaa;
+    }
     QWidget {
         background-color: #f5f5f5;
         color: #111;
@@ -385,17 +424,21 @@ class FlashcardApp(QMainWindow):
         self.setStyleSheet(STYLESHEET)
 
         # ===== MENU =====
+        self.statusBar()  # activeer statusbalk
         self.menu = self.menuBar()
         self.deck_menu = self.menu.addMenu(T["menu_deck"])
 
         self.new_action = self.deck_menu.addAction(T["menu_new_deck"])
         self.new_action.triggered.connect(self.create_new_deck)
+        self.new_action.setStatusTip("Ctrl+N")
 
         self.open_action = self.deck_menu.addAction(T["menu_load_deck"])
         self.open_action.triggered.connect(self.load_deck_dialog)
+        self.open_action.setStatusTip("Ctrl+L")
 
         self.save_action = self.deck_menu.addAction(T["menu_save_deck"])
         self.save_action.triggered.connect(self.save_current_deck)
+        self.save_action.setStatusTip("Ctrl+S")
 
         self.options_menu = self.menu.addMenu(T["menu_options"])
         self.dark_theme_action = self.options_menu.addAction(T["menu_dark_theme"])
@@ -417,6 +460,10 @@ class FlashcardApp(QMainWindow):
         self.lang_en_action.setCheckable(True)
         self.lang_nl_action.triggered.connect(lambda: self.set_language("nl"))
         self.lang_en_action.triggered.connect(lambda: self.set_language("en"))
+
+        QShortcut(QKeySequence("Ctrl+N"), self).activated.connect(self.create_new_deck)
+        QShortcut(QKeySequence("Ctrl+L"), self).activated.connect(self.load_deck_dialog)
+        QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self.save_current_deck)
 
         # ===== LAYOUT =====
         main_layout = QVBoxLayout()
@@ -503,11 +550,11 @@ class FlashcardApp(QMainWindow):
     def update_ui_for_no_deck(self):
         self.deck_label.setText(T["no_deck"])
         self.setWindowTitle("Flashcard App")
+        self.save_action.setEnabled(False)
         self.practice_button.setDisabled(True)
         self.flashcard_button.setDisabled(True)
         self.add_card_button.setDisabled(True)
         self.edit_cards_button.setDisabled(True)
-        self.save_action.setEnabled(False)
 
     def update_ui_for_unsaved_deck(self):
         self.practice_button.setDisabled(True)
@@ -764,16 +811,16 @@ class PracticeDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
 
-        self.show_answers_button = QPushButton(T["show_answers"])
+        self.show_answers_button = QPushButton(T["show_answers"] + "  (F1)")
         self.show_answers_button.clicked.connect(self.show_answers)
         btn_layout.addWidget(self.show_answers_button)
 
-        self.next_button = QPushButton(T["next_card"])
+        self.next_button = QPushButton(T["next_card"] + "  ␣")
         self.next_button.clicked.connect(self.next_card)
         self.next_button.setObjectName("PrimaryButton")
         btn_layout.addWidget(self.next_button)
 
-        self.stop_button = QPushButton(T["stop"])
+        self.stop_button = QPushButton(T["stop"] + "  (Esc)")
         self.stop_button.clicked.connect(self.reject)
         btn_layout.addWidget(self.stop_button)
 
@@ -964,10 +1011,17 @@ class PracticeDialog(QDialog):
         self.show_answers_button.setDisabled(True)
 
     def keyPressEvent(self, event):
-        # Space = volgende kaart wanneer klaar (zoals je al had)
+        # Space = volgende kaart wanneer klaar
         if event.key() == Qt.Key.Key_Space:
             if self.card_complete:
                 self.next_card()
+            event.accept()
+            return
+
+        # F1 = toon antwoorden
+        if event.key() == Qt.Key.Key_F1:
+            if self.show_answers_button.isEnabled():
+                self.show_answers()
             event.accept()
             return
 
@@ -1030,19 +1084,19 @@ class FlashcardDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
 
-        self.flip_button = QPushButton(T["flip"])
+        self.flip_button = QPushButton(T["flip"] + "  ␣")
         self.flip_button.clicked.connect(self.flip_card)
         self.flip_button.setObjectName("PrimaryButton")
         self.flip_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_layout.addWidget(self.flip_button)
 
-        self.next_button = QPushButton(T["next_card"])
+        self.next_button = QPushButton(T["next_card"] + "  ␣")
         self.next_button.clicked.connect(self.next_card)
         self.next_button.setDisabled(True)
         self.next_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_layout.addWidget(self.next_button)
 
-        self.stop_button = QPushButton(T["stop"])
+        self.stop_button = QPushButton(T["stop"] + "  (Esc)")
         self.stop_button.clicked.connect(self.reject)
         self.stop_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_layout.addWidget(self.stop_button)
@@ -1132,12 +1186,12 @@ class EditCardsDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(12)
 
-        save_btn = QPushButton(T["save_close"])
+        save_btn = QPushButton(T["save_close"] + "  (Ctrl+S)")
         save_btn.setObjectName("PrimaryButton")
         save_btn.clicked.connect(self.accept)
         btn_row.addWidget(save_btn)
 
-        discard_btn = QPushButton(T["close"])
+        discard_btn = QPushButton(T["close"] + "  (Esc)")
         discard_btn.clicked.connect(self.discard_and_close)
         btn_row.addWidget(discard_btn)
 
@@ -1152,6 +1206,10 @@ class EditCardsDialog(QDialog):
         return "white"
 
     def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_S and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            self.accept()
+            event.accept()
+            return
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             for card_id, fields in self.card_fields.items():
                 all_fields = [fields["front"]] + fields["answers"]
@@ -1333,14 +1391,14 @@ class AddCardDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(12)
 
-        save_btn = QPushButton(T["save_close"])
+        save_btn = QPushButton(T["save_close"] + "  (Ctrl+S)")
         save_btn.setObjectName("PrimaryButton")
         save_btn.setAutoDefault(False)
         save_btn.setDefault(False)
         save_btn.clicked.connect(self.accept)
         btn_row.addWidget(save_btn)
 
-        discard_btn = QPushButton(T["close"])
+        discard_btn = QPushButton(T["close"] + "  (Esc)")
         discard_btn.setAutoDefault(False)
         discard_btn.setDefault(False)
         discard_btn.clicked.connect(self.reject)
@@ -1354,6 +1412,10 @@ class AddCardDialog(QDialog):
         self.add_answer_field()
 
     def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_S and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            self.accept()
+            event.accept()
+            return
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             # Sprong naar volgend invoerveld, geen Ok
             all_fields = [self.front_input] + self.back_inputs

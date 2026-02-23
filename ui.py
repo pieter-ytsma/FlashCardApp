@@ -10,7 +10,7 @@ from storage import save_deck, load_deck
 from PySide6.QtCore import Qt, QSize, QSettings
 from PySide6.QtGui import QFont, QKeySequence, QShortcut
 from helpers import start_card, check_answer
-
+from PySide6.QtGui import QIcon
 
 class DeletableLineEdit(QLineEdit):
     def __init__(self, text="", on_delete=None, icon_color="white", parent=None):
@@ -411,6 +411,7 @@ MAX_SLOTS = 6
 class FlashcardApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowIcon(QIcon("icon.ico"))
 
         self.current_deck = None
         self.cards = []

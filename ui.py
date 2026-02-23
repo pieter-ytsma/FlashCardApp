@@ -98,6 +98,7 @@ TRANSLATIONS = {
         "unsaved_save": "Opslaan",
         "unsaved_discard": "Afsluiten",
         "unsaved_cancel": "Annuleren",
+        "close_after_finish": "Sluiten",
     },
     "en": {
         "menu_deck": "&Deck",
@@ -145,6 +146,8 @@ TRANSLATIONS = {
         "unsaved_save": "&Save",
         "unsaved_discard": "&Quit",
         "unsaved_cancel": "&Cancel",
+        "close_after_finish": "Close",
+        
     }
 }
 
@@ -1050,6 +1053,7 @@ class PracticeDialog(QDialog):
         self.next_button.style().polish(self.next_button)
         self.next_button.setDisabled(True)
         self.show_answers_button.setDisabled(True)
+        self.stop_button.setText(T["close_after_finish"])
 
     def keyPressEvent(self, event):
         # Space = volgende kaart wanneer klaar
@@ -1182,6 +1186,7 @@ class FlashcardDialog(QDialog):
             self.counter_label.setText("")
             self.flip_button.setDisabled(True)
             self.next_button.setDisabled(True)
+            self.stop_button.setText(T["close_after_finish"])
             return
         self.card_index += 1
         self.load_card(self.queue.pop(0))

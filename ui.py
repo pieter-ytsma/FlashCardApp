@@ -574,8 +574,10 @@ class FlashcardApp(QMainWindow):
         self.save_action.setEnabled(True)
 
     def update_ui_for_saved_deck(self):
-        self.practice_button.setDisabled(False)
-        self.flashcard_button.setDisabled(False)
+        has_cards = bool(self.cards)
+
+        self.practice_button.setDisabled(not has_cards)
+        self.flashcard_button.setDisabled(not has_cards)
         self.add_card_button.setDisabled(False)
         self.edit_cards_button.setDisabled(False)
         self.save_action.setEnabled(True)
@@ -713,6 +715,7 @@ class FlashcardApp(QMainWindow):
             self.cards = self.current_deck["cards"]
             self._dirty = True
             self._update_title()
+            self.update_ui_for_saved_deck()
 
     def edit_cards(self):
         if not self.current_deck:

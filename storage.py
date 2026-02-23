@@ -36,23 +36,41 @@ def load_deck(filepath: str) -> dict:
 
 def validate_deck(deck: dict):
     """
-    Minimale validatie van deck-structuur.
+    Striktere validatie van deck-structuur en inhoud.
     """
+
     if not isinstance(deck, dict):
         raise ValueError("Deck moet een dictionary zijn.")
 
-    if "name" not in deck:
-        raise ValueError("Deck mist 'name'.")
+    if "name" not in deck or not isinstance(deck["name"], str):
+        raise ValueError("Deck mist geldige 'name'.")
 
-    if "cards" not in deck:
-        raise ValueError("Deck mist 'cards'.")
+    if "cards" not in deck or not isinstance(deck["cards"], list):
+        raise ValueError("Deck mist geldige 'cards' lijst.")
 
-    if not isinstance(deck["cards"], list):
-        raise ValueError("'cards' moet een lijst zijn.")
+    for i, card in enumerate(deck["cards"], start=1):
 
-    for card in deck["cards"]:
+        if not isinstance(card, dict):
+            raise ValueError(f"Kaart {i} is geen geldig object.")
+
         if "front" not in card or "back" not in card:
-            raise ValueError("Elke kaart moet 'front' en 'back' bevatten.")
+            raise ValueError(f"Kaart {i} mist 'front' of 'back'.")
+
+        if not isinstance(card["front"], str):
+            raise ValueError(f"Kaart {i}: 'front' moet tekst zijn.")
 
         if not isinstance(card["back"], list):
-            raise ValueError("'back' moet een lijst zijn.")
+            raise ValueError(f"Kaart {i}: 'back' moet een lijst zijn.")
+
+        if len(card["back"]) == 0:
+            raise ValueError(f"Kaart {i} heeft geen antwoorden.")
+
+        if len(card["back"]) > 6:
+            raise ValueError(f"Kaart {i} heeft meer dan 6 antwoorden.")
+
+        for j, answer in enumerate(card["back"], start=1):
+            if not isinstance(answer, str):
+                raise ValueError(f"Kaart {i}, antwoord {j} moet tekst zijn.")
+
+            if not answer.strip():
+                raise ValueError(f"Kaart {i}, antwoord {j} is leeg.")

@@ -190,12 +190,18 @@ class EditCardsDialog(QDialog):
         self.reject()
 
     def accept(self):
+        cleaned = []
         for card in self.cards:
-            card["front"] = card["front"].strip()
-            card["back"] = [
-                a.strip()
-                for a in card["back"]
-                if isinstance(a, str) and a.strip()
-            ]
+            front = card["front"].strip()
+            back = [a.strip() for a in card["back"] if isinstance(a, str) and a.strip()]
+
+            # Alleen bewaren als er inhoud is
+            if front or back:
+                card["front"] = front
+                card["back"] = back
+                cleaned.append(card)
+
+        self.cards.clear()
+        self.cards.extend(cleaned)
 
         super().accept()

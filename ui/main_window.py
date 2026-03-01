@@ -36,6 +36,7 @@ class FlashcardApp(QMainWindow):
         self.cards = []
         self.deck_path = None
         self._dirty = False
+        self._loaded_deck_names = None  # lijst van namen bij meerdere geladen decks
 
         self.setup_ui()
         self.update_ui_for_no_deck()
@@ -228,10 +229,19 @@ class FlashcardApp(QMainWindow):
 
     def _update_title(self):
         if self.current_deck:
-            name = Path(self.deck_path).stem if self.deck_path else self.current_deck["name"]
+            if self._loaded_deck_names:
+                # Meerdere decks samengevoegd
+                name = " + ".join(self._loaded_deck_names)
+                short_name = f"{len(self._loaded_deck_names)} decks"
+            elif self.deck_path:
+                name = Path(self.deck_path).stem
+                short_name = name
+            else:
+                name = self.current_deck["name"]
+                short_name = name
             dirty = " *" if self._dirty else ""
             self.setWindowTitle(f"Flashcard App - {name}{dirty}")
-            self.deck_label.setText(name[:1].upper() + name[1:] if name else name)
+            self.deck_label.setText(short_name[:1].upper() + short_name[1:] if short_name else short_name)
         else:
             self.setWindowTitle("Flashcard App")
             self.deck_label.setText(T["no_deck"])
@@ -241,6 +251,7 @@ class FlashcardApp(QMainWindow):
         self.cards = deck["cards"]
         self.deck_path = None
         self._dirty = True
+        self._loaded_deck_names = None
         self._update_title()
         self.update_ui_for_unsaved_deck()
 
@@ -305,25 +316,52 @@ class FlashcardApp(QMainWindow):
         if not self._confirm_discard():
             return
 
-        filepath, _ = QFileDialog.getOpenFileName(
+        filepaths, _ = QFileDialog.getOpenFileNames(
             self, T["load_dialog"], "", "Deck files (*.json)"
         )
-        if not filepath:
+        if not filepaths:
             return
 
-        try:
-            deck = load_deck(filepath)
-        except Exception as e:
-            from PySide6.QtWidgets import QMessageBox
-            QMessageBox.critical(self, T["load_error"], str(e))
-            return
+        loaded_decks = []
+        for filepath in filepaths:
+            try:
+                deck = load_deck(filepath)
+                loaded_decks.append((filepath, deck))
+            except Exception as e:
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.critical(self, T["load_error"], f"{Path(filepath).name}: {e}")
+                return
 
-        self.deck_path = filepath
-        self.current_deck = deck
-        self.cards = deck["cards"]
+        if len(loaded_decks) == 1:
+            filepath, deck = loaded_decks[0]
+            self.deck_path = filepath
+            self.current_deck = deck
+            self._loaded_deck_names = None
+        else:
+            # Meerdere decks: kaarten samenvoegen
+            merged_cards = []
+            for _, deck in loaded_decks:
+                merged_cards.extend(deck["cards"])
+            names = [Path(fp).stem for fp, _ in loaded_decks]
+            merged_name = ", ".join(names)
+            self.current_deck = {"name": merged_name, "cards": merged_cards}
+            self.deck_path = None
+            self._loaded_deck_names = names
+
+        self.cards = self.current_deck["cards"]
         self._dirty = False
         self._update_title()
         self.update_ui_for_saved_deck()
+
+        if self._loaded_deck_names:
+            count = len(self._loaded_deck_names)
+            total = len(self.cards)
+            self.statusBar().showMessage(
+                T.get("decks_merged", "{count} decks geladen, {total} kaarten totaal").format(
+                    count=count, total=total
+                ),
+                4000,
+            )
 
     def add_card(self):
         if not self.current_deck:
